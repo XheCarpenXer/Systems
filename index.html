@@ -1,15 +1,626 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Index</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UDCSEF · Causal Fabric IP Portfolio — James Chapman</title>
+<meta name="description" content="Prior art declaration and IP portfolio for the Universal Deterministic Causal State Execution Fabric (UDCSEF) and Causal Fabric systems. Author: James Chapman (xhecarpenxer).">
+<meta name="author" content="James Chapman (xhecarpenxer)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020408;
+    --bg2: #060d14;
+    --grid: #0a1a28;
+    --accent: #00e5ff;
+    --accent2: #ff3a6e;
+    --accent3: #b8ff57;
+    --dim: #3a5a72;
+    --text: #c8e0ee;
+    --text2: #6a9ab8;
+    --border: #0d2a3e;
+    --glow: 0 0 18px rgba(0,229,255,0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.08) 3px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── GRID BG ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 22px 0 18px;
+    position: relative;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo-block { display: flex; flex-direction: column; gap: 2px; }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2rem, 6vw, 4rem);
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,229,255,0.4), 0 0 60px rgba(0,229,255,0.15);
+    line-height: 1;
+  }
+  .logo span { color: var(--accent2); }
+  .tagline {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+  .author-badge {
+    border: 1px solid var(--accent);
+    padding: 8px 16px;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+  .author-badge::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,229,255,0.04);
+  }
+  .author-badge strong { color: #fff; display: block; font-size: 13px; letter-spacing: 0.05em; }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 72px 0 60px;
+    position: relative;
+  }
+  .hero-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.4rem, 7vw, 5.5rem);
+    line-height: 1.05;
+    letter-spacing: 0.03em;
+    color: #fff;
+    max-width: 860px;
+    margin-bottom: 28px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+    text-shadow: var(--glow);
+  }
+  .hero-desc {
+    max-width: 680px;
+    color: var(--text2);
+    font-size: 13px;
+    line-height: 1.8;
+    margin-bottom: 40px;
+  }
+  .stamp-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stamp {
+    border: 1px solid;
+    padding: 6px 14px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .stamp-cyan { border-color: var(--accent); color: var(--accent); }
+  .stamp-red { border-color: var(--accent2); color: var(--accent2); }
+  .stamp-green { border-color: var(--accent3); color: var(--accent3); }
+
+  /* ── SECTION TITLE ── */
+  .section { padding: 52px 0; }
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.8rem);
+    color: #fff;
+    letter-spacing: 0.05em;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+  .section-title span { color: var(--accent); }
+
+  /* ── PRIOR ART BOX ── */
+  .prior-art {
+    background: linear-gradient(135deg, rgba(0,229,255,0.04) 0%, rgba(0,229,255,0.01) 100%);
+    border: 1px solid var(--accent);
+    border-left: 4px solid var(--accent);
+    padding: 28px 32px;
+    margin-bottom: 36px;
+    position: relative;
+  }
+  .prior-art::before {
+    content: 'PRIOR ART DECLARATION';
+    position: absolute;
+    top: -9px;
+    left: 20px;
+    background: var(--bg);
+    padding: 0 8px;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+  }
+  .prior-art p { color: var(--text2); font-size: 13px; line-height: 1.9; margin-bottom: 14px; }
+  .prior-art p:last-child { margin-bottom: 0; }
+  .prior-art strong { color: var(--text); }
+  .prior-art .date-line {
+    font-size: 11px;
+    color: var(--accent3);
+    letter-spacing: 0.1em;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── LICENSE GRID ── */
+  .license-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 12px;
+  }
+  .license-card {
+    border: 1px solid var(--border);
+    padding: 24px 26px;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .license-card:hover { border-color: var(--accent); background: rgba(0,229,255,0.03); }
+  .license-card .lc-type {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .lc-gov .lc-type { color: var(--accent3); }
+  .lc-biz .lc-type { color: var(--accent2); }
+  .license-card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .lc-gov h3 { color: var(--accent3); }
+  .lc-biz h3 { color: var(--accent2); }
+  .license-card p { font-size: 12px; color: var(--text2); line-height: 1.8; margin-bottom: 16px; }
+  .license-card .lc-terms {
+    font-size: 11px;
+    color: var(--dim);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    line-height: 1.7;
+  }
+  .license-card .lc-terms strong { color: var(--text2); }
+  .contact-cta {
+    margin-top: 24px;
+    padding: 18px 24px;
+    background: rgba(255,58,110,0.06);
+    border: 1px solid rgba(255,58,110,0.3);
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.8;
+  }
+  .contact-cta a { color: var(--accent2); text-decoration: none; border-bottom: 1px solid rgba(255,58,110,0.4); }
+  .contact-cta a:hover { color: #fff; }
+
+  /* ── ARTIFACT CARDS ── */
+  .artifact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+  }
+  .artifact-card {
+    border: 1px solid var(--border);
+    padding: 22px 24px 20px;
+    text-decoration: none;
+    display: block;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.15s;
+    background: var(--bg2);
+  }
+  .artifact-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .artifact-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .artifact-card:hover::before { opacity: 1; }
+  .artifact-card .ac-num {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--dim);
+    margin-bottom: 10px;
+  }
+  .artifact-card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-bottom: 8px;
+    line-height: 1.1;
+  }
+  .artifact-card .ac-file {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .artifact-card p {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .artifact-card .ac-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ac-tag {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    color: var(--dim);
+  }
+  .artifact-card .ac-open {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    font-size: 18px;
+    color: var(--accent);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .artifact-card:hover .ac-open { opacity: 1; transform: translateX(0); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 36px 0;
+    margin-top: 40px;
+  }
+  .footer-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  .footer-left .fl-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .footer-left .fl-handle { font-size: 11px; color: var(--text2); letter-spacing: 0.1em; }
+  .footer-right { font-size: 10px; color: var(--dim); letter-spacing: 0.08em; text-align: right; line-height: 2; }
+  .footer-right a { color: var(--dim); text-decoration: none; }
+  .footer-right a:hover { color: var(--accent); }
+
+  /* ── PULSE ANIMATION ── */
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 8px rgba(0,229,255,0.1); }
+    50% { box-shadow: 0 0 24px rgba(0,229,255,0.3); }
+  }
+  .prior-art { animation: pulse-glow 4s ease-in-out infinite; }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero { animation: fade-up 0.7s ease both; }
+  .artifact-card:nth-child(1) { animation: fade-up 0.5s 0.1s ease both; }
+  .artifact-card:nth-child(2) { animation: fade-up 0.5s 0.15s ease both; }
+  .artifact-card:nth-child(3) { animation: fade-up 0.5s 0.2s ease both; }
+  .artifact-card:nth-child(4) { animation: fade-up 0.5s 0.25s ease both; }
+  .artifact-card:nth-child(5) { animation: fade-up 0.5s 0.3s ease both; }
+  .artifact-card:nth-child(6) { animation: fade-up 0.5s 0.35s ease both; }
+  .artifact-card:nth-child(7) { animation: fade-up 0.5s 0.4s ease both; }
+
+  /* ── DIVIDER ── */
+  .div-line {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .footer-right { text-align: left; }
+  }
+</style>
 </head>
 <body>
-    <!-- Previous content... -->
-    <a href="causal_fabric.html">Causal Fabric</a>
-    <!-- Previous content... -->
-    <a href="fabric.html">Fabric</a>
-    <!-- Previous content... -->
+
+<header>
+  <div class="wrap header-inner">
+    <div class="logo-block">
+      <div class="logo">UDCSEF <span>&amp;</span> Causal Fabric</div>
+      <div class="tagline">Intellectual Property Portfolio &amp; Prior Art Registry</div>
+    </div>
+    <div class="author-badge">
+      <strong>James Chapman</strong>
+      xhecarpenxer
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-eyebrow">// Original Research &amp; Architecture</div>
+      <h1>Universal Deterministic<br><em>Causal State Execution</em><br>Fabric</h1>
+      <p class="hero-desc">
+        A foundational framework for deterministic, causally-ordered distributed AI execution — encompassing sovereign mesh infrastructure, peer-to-peer state propagation, and unified causal fabric orchestration. All concepts, architectures, naming conventions, and implementations originated by James Chapman (xhecarpenxer).
+      </p>
+      <div class="stamp-row">
+        <span class="stamp stamp-cyan">Prior Art Established</span>
+        <span class="stamp stamp-red">Dual Licensed</span>
+        <span class="stamp stamp-green">© 2024–2025 James Chapman</span>
+      </div>
+    </section>
+
+    <hr class="div-line">
+
+    <!-- PRIOR ART -->
+    <section class="section">
+      <div class="section-label">// Legal Notice</div>
+      <div class="section-title">Prior Art <span>&amp; IP Declaration</span></div>
+
+      <div class="prior-art">
+        <p>
+          <strong>NOTICE OF PRIOR ART AND INTELLECTUAL PROPERTY CLAIM</strong><br>
+          The works contained in this portfolio — including but not limited to the Universal Deterministic Causal State Execution Fabric (UDCSEF), Causal Fabric, CausalMesh, and all associated architectural concepts, naming conventions, diagrams, code, and documentation — constitute original creative and technical works authored by <strong>James Chapman</strong>, known online as <strong>xhecarpenxer</strong>.
+        </p>
+        <p>
+          These materials were conceived, designed, and produced independently prior to publication. Their public release on this page and via associated HTML artifacts serves as a formal declaration of <strong>prior art</strong>, establishing authorship and date of disclosure for intellectual property purposes. No third party may claim independent invention of the specific architectures, terminology, or system designs presented herein without prior written agreement.
+        </p>
+        <p>
+          This declaration covers: the UDCSEF specification and its constituent concepts; the Causal Fabric distributed intelligence network architecture; the CausalMesh sovereign AI infrastructure model; peer-to-peer deterministic state propagation mechanisms; and all derivative naming, branding, and system design choices presented across all linked documents.
+        </p>
+        <div class="date-line">
+          Public prior art disclosure date: <strong>2024–2025</strong> &nbsp;|&nbsp;
+          Author: <strong>James Chapman (xhecarpenxer)</strong> &nbsp;|&nbsp;
+          All rights reserved except as granted under the dual license below.
+        </div>
+      </div>
+    </section>
+
+    <hr class="div-line">
+
+    <!-- LICENSE -->
+    <section class="section">
+      <div class="section-label">// Usage Terms</div>
+      <div class="section-title">Dual <span>License</span></div>
+
+      <div class="license-grid">
+        <div class="license-card lc-gov">
+          <div class="lc-type">License Tier 1</div>
+          <h3>Government &amp; Public Sector</h3>
+          <p>
+            Government bodies, public institutions, non-profit public interest organisations, and academic/research entities may use, study, and build upon these works under a negotiated public-interest license. Use must serve the public good and must not be sublicensed for commercial gain without explicit written consent.
+          </p>
+          <div class="lc-terms">
+            <strong>Permitted:</strong> Research, public infrastructure, academic study, open policy development.<br>
+            <strong>Required:</strong> Attribution to James Chapman (xhecarpenxer) in all derivative works and publications.<br>
+            <strong>Prohibited:</strong> Resale, sublicensing, or closed proprietary integration without a commercial license.<br>
+            <strong>Fee:</strong> Negotiated — contact author for terms.
+          </div>
+        </div>
+
+        <div class="license-card lc-biz">
+          <div class="lc-type">License Tier 2</div>
+          <h3>Commercial &amp; Business Use</h3>
+          <p>
+            Private companies, startups, enterprises, and any for-profit entity wishing to integrate, deploy, or build commercial products on top of these architectures must obtain a commercial license directly from the author. All commercial use without a signed license agreement is strictly prohibited.
+          </p>
+          <div class="lc-terms">
+            <strong>Permitted:</strong> Internal evaluation and prototyping for a limited trial period only.<br>
+            <strong>Required:</strong> Signed commercial license agreement; revenue-share or flat-fee arrangement to be negotiated.<br>
+            <strong>Prohibited:</strong> Production deployment, resale, or rebranding without a signed agreement.<br>
+            <strong>Fee:</strong> Paid — commercial rates apply. Contact author.
+          </div>
+        </div>
+      </div>
+
+      <div class="contact-cta">
+        <strong style="color:#fff;">Licensing inquiries:</strong>
+        Contact James Chapman directly. Reference the specific artifact(s) and intended use case. Government and public-sector inquiries are welcome and prioritised. Commercial licensing negotiations are open.
+        &nbsp;|&nbsp; GitHub / social handle: <a href="https://github.com/xhecarpenxer" target="_blank" rel="noopener">@xhecarpenxer</a>
+      </div>
+    </section>
+
+    <hr class="div-line">
+
+    <!-- ARTIFACTS -->
+    <section class="section">
+      <div class="section-label">// Portfolio Documents</div>
+      <div class="section-title">Artifact <span>Index</span></div>
+
+      <div class="artifact-grid">
+
+        <a class="artifact-card" href="UDCSEF_UNIFIED.html" target="_blank" rel="noopener">
+          <div class="ac-num">001 / CORE SPEC</div>
+          <h3>UDCSEF — Unified</h3>
+          <div class="ac-file">UDCSEF_UNIFIED.html</div>
+          <p>The canonical, unified specification of the Universal Deterministic Causal State Execution Fabric. Peer-to-peer connection modals, full state execution model, and complete architectural reference. The authoritative document for the UDCSEF framework.</p>
+          <div class="ac-tags">
+            <span class="ac-tag">Canonical</span>
+            <span class="ac-tag">Full Spec</span>
+            <span class="ac-tag">P2P</span>
+          </div>
+          <span class="ac-open">→</span>
+        </a>
+
+        <a class="artifact-card" href="udcsef.html" target="_blank" rel="noopener">
+          <div class="ac-num">002 / CORE SPEC</div>
+          <h3>UDCSEF — Base</h3>
+          <div class="ac-file">udcsef.html</div>
+          <p>Original base implementation of the Universal Deterministic Causal State Execution Fabric. Establishes the foundational terminology, state model, and execution semantics that all subsequent versions build upon.</p>
+          <div class="ac-tags">
+            <span class="ac-tag">Original</span>
+            <span class="ac-tag">Foundation</span>
+            <span class="ac-tag">State Model</span>
+          </div>
+          <span class="ac-open">→</span>
+        </a>
+
+        <a class="artifact-card" href="causal-mesh-v2.html" target="_blank" rel="noopener">
+          <div class="ac-num">003 / MESH INFRA</div>
+          <h3>CausalMesh v2</h3>
+          <div class="ac-file">causal-mesh-v2.html</div>
+          <p>Second-generation CausalMesh implementation running on the UDCSEF sovereign AI fabric. Introduces enhanced peer discovery, improved deterministic ordering, and extended mesh topology controls.</p>
+          <div class="ac-tags">
+            <span class="ac-tag">v2</span>
+            <span class="ac-tag">Sovereign AI</span>
+            <span class="ac-tag">Mesh</span>
+          </div>
+          <span class="ac-open">→</span>
+        </a>
+
+        <a class="artifact-card" href="causal-ai-mesh.html" target="_blank" rel="noopener">
+          <div class="ac-num">004 / MESH INFRA</div>
+          <h3>CausalMesh — Sovereign AI</h3>
+          <div class="ac-file">causal-ai-mesh.html</div>
+          <p>Sovereign AI infrastructure layer built on causal mesh principles. Explores autonomous node orchestration, censorship-resistant execution, and self-sovereign AI agent coordination within the causal fabric model.</p>
+          <div class="ac-tags">
+            <span class="ac-tag">Sovereign</span>
+            <span class="ac-tag">AI Infra</span>
+            <span class="ac-tag">Agents</span>
+          </div>
+          <span class="ac-open">→</span>
+        </a>
+
+        <a class="artifact-card" href="causal_fabric.html" target="_blank" rel="noopener">
+          <div class="ac-num">005 / FABRIC</div>
+          <h3>Causal Fabric</h3>
+          <div class="ac-file">causal_fabric__1_.html</div>
+          <p>The Causal Fabric distributed intelligence network — a visualisation and specification of how causally-ordered events propagate across a distributed node mesh to form a coherent, deterministic intelligence substrate.</p>
+          <div class="ac-tags">
+            <span class="ac-tag">Distributed</span>
+            <span class="ac-tag">Intelligence</span>
+            <span class="ac-tag">Network</span>
+          </div>
+          <span class="ac-open">→</span>
+        </a>
+
+        <a class="artifact-card" href="global_causal_fabric_fixed.html" target="_blank" rel="noopener">
+          <div class="ac-num">006 / FABRIC</div>
+          <h3>Global Causal Fabric</h3>
+          <div class="ac-file">global_causal_fabric_fixed.html</div>
+          <p>Global-scale extension of the Causal Fabric concept, presenting a unified intelligence system operating across planetary-scale infrastructure. Includes fixed topology corrections and a unified system view.</p>
+          <div class="ac-tags">
+            <span class="ac-tag">Global</span>
+            <span class="ac-tag">Unified System</span>
+            <span class="ac-tag">Fixed</span>
+          </div>
+          <span class="ac-open">→</span>
+        </a>
+
+        <a class="artifact-card" href="fabric__1_.html" target="_blank" rel="noopener">
+          <div class="ac-num">007 / FABRIC</div>
+          <h3>Fabric — Deterministic Execution</h3>
+          <div class="ac-file">fabric.html</div>
+          <p>Core Fabric document focused on deterministic execution over time — the temporal ordering and causal chaining mechanics that underpin the broader UDCSEF architecture. Establishes execution semantics and time-ordered state transitions.</p>
+          <div class="ac-tags">
+            <span class="ac-tag">Deterministic</span>
+            <span class="ac-tag">Temporal</span>
+            <span class="ac-tag">Execution</span>
+          </div>
+          <span class="ac-open">→</span>
+        </a>
+
+      </div>
+    </section>
+
+  </div><!-- /wrap -->
+</main>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div class="footer-left">
+      <div class="fl-name">James Chapman</div>
+      <div class="fl-handle">@xhecarpenxer &nbsp;·&nbsp; xhecarpenxer</div>
+    </div>
+    <div class="footer-right">
+      © 2024–2025 James Chapman. All rights reserved.<br>
+      Prior art publicly disclosed via this document.<br>
+      Dual license: Government (negotiated) · Commercial (paid).<br>
+      Unauthorised commercial use is prohibited.<br>
+      <a href="mailto:">Contact for licensing →</a>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>
