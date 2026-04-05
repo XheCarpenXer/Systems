@@ -1321,7 +1321,8 @@ async function refreshModels() {
     const res = await fetch(OLLAMA+'/api/tags',{signal:AbortSignal.timeout(3500)});
     if(!res.ok) throw new Error('bad');
     const d = await res.json();
-    F.models = (d.models||[]).map(m=>m.name);
+    const allModels = (d.models||[]).map(m=>m.name);
+    F.models = allModels;
     F.ollamaOnline = true;
     document.getElementById('ollama-pill').innerHTML = '<span class="dot"></span> Ollama: '+F.models.length+' model(s)';
     document.getElementById('ollama-pill').className = 'pill green';
@@ -1330,7 +1331,7 @@ async function refreshModels() {
     document.getElementById('sb-ollama').textContent = '✓';
     document.getElementById('sb-ollama').style.color = 'var(--green)';
     populateModelSelects();
-    netLog('ok','Ollama online — '+F.models.join(', '));
+    netLog('ok','Ollama online — default: '+(F.models[0])+' — '+F.models.length+' model(s)');
   } catch(e) {
     F.ollamaOnline = false;
     document.getElementById('ollama-pill').innerHTML = '<span class="dot"></span> Ollama offline';
@@ -1343,7 +1344,7 @@ async function refreshModels() {
 }
 
 function populateModelSelects() {
-  const opts = F.models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  const opts = F.models.map((m, i) => `<option value="${m}"${i === 0 ? ' selected' : ''}>${m}</option>`).join('');
   ['ai-model-sel','agent-model-sel'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.innerHTML = opts||'<option value="">No models</option>';
