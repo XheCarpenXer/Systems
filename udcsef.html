@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UDCSEF — Universal Deterministic Causal State Execution Fabric</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #08090c;
+  --bg2: #0e1018;
+  --bg3: #141720;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --muted: #6b7280;
+  --accent: #4f8ef7;
+  --accent2: #7c3aed;
+  --green: #10d084;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --cyan: #06b6d4;
+  --pink: #ec4899;
+  --mono: 'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --glow-blue: 0 0 30px rgba(79,142,247,0.18);
+  --glow-purple: 0 0 30px rgba(124,58,237,0.18);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ─── GRID NOISE BACKGROUND ─────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── LAYOUT ─────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr 260px;
+  grid-template-rows: 48px 1fr;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── TOPBAR ─────────────────────────────────── */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  background: rgba(8,9,12,0.92);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-brand {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.topbar-sep { flex: 1; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  border: 1px solid;
+}
+.pill.green { color: var(--green); border-color: rgba(16,208,132,0.3); background: rgba(16,208,132,0.06); }
+.pill.blue  { color: var(--accent); border-color: rgba(79,142,247,0.3); background: rgba(79,142,247,0.06); }
+.pill.amber { color: var(--amber); border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.topbar-clock {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+/* ─── LEFT PANEL ─────────────────────────────── */
+.left-panel {
+  border-right: 1px solid var(--border);
+  background: var(--bg2);
+  overflow-y: auto;
+  padding: 16px 0;
+}
+.panel-section {
+  padding: 8px 16px 4px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-family: var(--display);
+  font-weight: 600;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-size: 12px;
+  color: var(--muted);
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+.nav-item.active { background: rgba(79,142,247,0.08); color: var(--accent); border-left-color: var(--accent); }
+.nav-icon { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7; }
+.nav-badge {
+  margin-left: auto;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  background: rgba(79,142,247,0.15);
+  color: var(--accent);
+}
+
+/* ─── MAIN CANVAS ────────────────────────────── */
+.main {
+  overflow: auto;
+  position: relative;
+  background: var(--bg);
+}
+
+/* ─── VIEWS ──────────────────────────────────── */
+.view { display: none; padding: 24px; }
+.view.active { display: block; }
+
+/* ─── SECTION HEADER ─────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.section-title {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.section-sub {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+/* ─── CARDS ──────────────────────────────────── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.card-sm { padding: 12px; }
+.card-title {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ─── GRID LAYOUTS ───────────────────────────── */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+/* ─── STAT CARDS ─────────────────────────────── */
+.stat-value {
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-label { font-size: 11px; color: var(--muted); }
+.stat-delta {
+  font-size: 10px;
+  margin-top: 6px;
+}
+.stat-delta.up { color: var(--green); }
+.stat-delta.down { color: var(--red); }
+
+/* ─── FABRIC CANVAS (Node Graph) ────────────── */
+#fabric-canvas {
+  width: 100%;
+  height: 520px;
+  position: relative;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+#fabric-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.fabric-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: move;
+  user-select: none;
+  font-size: 11px;
+  min-width: 110px;
+  text-align: center;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  z-index: 10;
+}
+.fabric-node:hover { box-shadow: var(--glow-blue); border-color: var(--accent); }
+.fabric-node.running { border-color: var(--green); box-shadow: 0 0 20px rgba(16,208,132,0.2); }
+.fabric-node.error   { border-color: var(--red);   box-shadow: 0 0 20px rgba(239,68,68,0.2); }
+.fabric-node.pending { border-color: var(--amber);  box-shadow: 0 0 20px rgba(245,158,11,0.2); }
+.fabric-node.selected { border-color: var(--accent); box-shadow: var(--glow-blue); }
+.node-type {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.node-name {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.node-status {
+  font-size: 9px;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  display: inline-block;
+}
+.node-status.running { background: rgba(16,208,132,0.12); color: var(--green); }
+.node-status.error   { background: rgba(239,68,68,0.12);  color: var(--red); }
+.node-status.pending { background: rgba(245,158,11,0.12); color: var(--amber); }
+.node-status.idle    { background: rgba(107,114,128,0.12); color: var(--muted); }
+.node-status.done    { background: rgba(79,142,247,0.12); color: var(--accent); }
+
+/* ─── CANVAS TOOLBAR ─────────────────────────── */
+.canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  user-select: none;
+}
+.btn:hover { background: var(--bg3); border-color: rgba(255,255,255,0.2); }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: rgba(79,142,247,0.15); border-color: rgba(79,142,247,0.4); color: var(--accent); }
+.btn.primary:hover { background: rgba(79,142,247,0.25); }
+.btn.danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--red); }
+
+/* ─── EXECUTION LOG ──────────────────────────── */
+.log-container {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  height: 180px;
+  overflow-y: auto;
+  padding: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.log-entry {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+.log-time { color: var(--muted); flex-shrink: 0; }
+.log-level { flex-shrink: 0; width: 40px; }
+.log-level.info  { color: var(--accent); }
+.log-level.ok    { color: var(--green); }
+.log-level.warn  { color: var(--amber); }
+.log-level.error { color: var(--red); }
+.log-msg { color: var(--text); }
+
+/* ─── TRANSFORMATION PIPELINE ───────────────── */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.stage {
+  flex-shrink: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-width: 130px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.stage:hover { border-color: var(--accent); }
+.stage.active-stage { border-color: var(--green); background: rgba(16,208,132,0.06); }
+.stage.done-stage   { border-color: rgba(79,142,247,0.3); opacity: 0.7; }
+.stage-name { font-family: var(--display); font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+.stage-desc { font-size: 9px; color: var(--muted); }
+.stage-progress {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 2px;
+  border-radius: 0 0 6px 6px;
+  background: var(--green);
+  transition: width 0.5s ease;
+}
+.pipe-arrow {
+  flex-shrink: 0;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ─── DATA TRANSFORM VIEW ────────────────────── */
+.transform-io {
+  display: grid;
+  grid-template-columns: 1fr 40px 1fr;
+  gap: 0;
+  align-items: start;
+}
+.io-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.io-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--display);
+  font-weight: 600;
+}
+.io-body {
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre;
+  min-height: 180px;
+  overflow: auto;
+}
+.io-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 60px;
+  color: var(--accent);
+  font-size: 20px;
+}
+
+/* ─── INTELLIGENCE AGENTS ────────────────────── */
+.agent-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.agent-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.agent-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  transition: opacity 0.2s;
+  opacity: 0;
+}
+.agent-card:hover { border-color: var(--border2); }
+.agent-card:hover::before { opacity: 1; }
+.agent-card.type-inference::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.agent-card.type-transform::before { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+.agent-card.type-compose::before   { background: linear-gradient(90deg, var(--amber), var(--pink)); }
+.agent-card.type-monitor::before   { background: linear-gradient(90deg, var(--cyan), var(--accent)); }
+.agent-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.agent-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.agent-name { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--text); }
+.agent-role { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.agent-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.tag {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  border: 1px solid;
+  letter-spacing: 0.04em;
+}
+.agent-graph { margin-top: 12px; }
+.mini-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.mini-bar-label { font-size: 9px; color: var(--muted); width: 48px; flex-shrink: 0; }
+.mini-bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.06); border-radius: 100px; overflow: hidden; }
+.mini-bar-fill { height: 100%; border-radius: 100px; transition: width 1s ease; }
+.mini-bar-val { font-size: 9px; color: var(--muted); width: 28px; text-align: right; }
+
+/* ─── RIGHT PANEL ────────────────────────────── */
+.right-panel {
+  border-left: 1px solid var(--border);
+  background: var(--bg2);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.inspector-title {
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* ─── CAUSAL TRACE ───────────────────────────── */
+.causal-chain { position: relative; }
+.causal-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.causal-item::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 22px;
+  bottom: -12px;
+  width: 1px;
+  background: var(--border);
+}
+.causal-item:last-child::before { display: none; }
+.causal-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.causal-body { flex: 1; }
+.causal-event { font-size: 11px; color: var(--text); line-height: 1.4; }
+.causal-meta  { font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+/* ─── STATE MATRIX ───────────────────────────── */
+.state-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.state-table th {
+  text-align: left;
+  padding: 5px 8px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  font-family: var(--display);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.state-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.state-table tr:last-child td { border-bottom: none; }
+.state-val { color: var(--cyan); }
+.state-type { color: var(--muted); font-size: 9px; }
+
+/* ─── SCROLLBAR ──────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── SPARKLINE ──────────────────────────────── */
+.sparkline { display: block; }
+
+/* ─── TABS ───────────────────────────────────── */
+.tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.tab {
+  padding: 8px 16px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ─── CODE BLOCK ─────────────────────────────── */
+.code-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.8;
+  overflow-x: auto;
+  white-space: pre;
+}
+.kw  { color: var(--accent2); }
+.fn  { color: var(--accent); }
+.str { color: var(--green); }
+.cmt { color: var(--muted); }
+.num { color: var(--amber); }
+.typ { color: var(--cyan); }
+
+/* ─── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 1100px) {
+  .shell { grid-template-columns: 200px 1fr 220px; }
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; grid-template-rows: 48px auto; }
+  .left-panel { display: none; }
+  .right-panel { display: none; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ─── ANIMATED EDGES ─────────────────────────── */
+.edge-path {
+  fill: none;
+  stroke: rgba(79,142,247,0.25);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  animation: dash 2s linear infinite;
+}
+.edge-path.active-edge {
+  stroke: rgba(16,208,132,0.5);
+  stroke-width: 2;
+  animation: dash 1s linear infinite;
+}
+@keyframes dash { to { stroke-dashoffset: -20; } }
+
+/* ─── MINI CHART ─────────────────────────────── */
+.chart-wrap {
+  height: 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── TOGGLE ─────────────────────────────────── */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+.toggle-label { font-size: 11px; color: var(--text); }
+.toggle {
+  position: relative;
+  width: 32px; height: 17px;
+  cursor: pointer;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.08);
+  border-radius: 100px;
+  border: 1px solid var(--border2);
+  transition: background 0.2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 11px; height: 11px;
+  left: 2px; top: 2px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.2s, background 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: rgba(79,142,247,0.25); border-color: rgba(79,142,247,0.5); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(15px); background: var(--accent); }
+
+/* ─── METRIC BAR ─────────────────────────────── */
+.metric-bar { margin: 4px 0 12px; }
+.metric-bar-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 10px; color: var(--muted); }
+.metric-track { height: 5px; background: rgba(255,255,255,0.06); border-radius: 100px; overflow: hidden; }
+.metric-fill { height: 100%; border-radius: 100px; transition: width 1s ease; }
+
+/* ─── HEATMAP ────────────────────────────────── */
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+}
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.heat-cell:hover { opacity: 0.7; outline: 1px solid rgba(255,255,255,0.3); }
+
+/* ─── COMPOSITION RULES TABLE ────────────────── */
+.rules-list { display: flex; flex-direction: column; gap: 6px; }
+.rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+}
+.rule-num {
+  font-family: var(--display);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  width: 18px;
+}
+.rule-text { color: var(--text); line-height: 1.5; }
+.rule-tag { font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+/* ─── FLOATING DETAIL BOX ────────────────────── */
+#node-detail {
+  position: absolute;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 12px;
+  width: 200px;
+  display: none;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  font-size: 11px;
+}
+.detail-title { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.detail-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.detail-key { color: var(--muted); }
+.detail-val { color: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <span class="topbar-brand">UDCSEF</span>
+  <span class="pill blue"><span class="dot"></span> Fabric v4.2.1</span>
+  <span class="pill green"><span class="dot"></span> 7 Agents Active</span>
+  <span class="pill amber">deterministic</span>
+  <span class="topbar-sep"></span>
+  <span class="topbar-clock" id="clock">—</span>
+</header>
+
+<!-- LEFT PANEL -->
+<nav class="left-panel">
+  <div class="panel-section">Fabric</div>
+  <div class="nav-item active" onclick="showView('fabric')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="3" cy="3" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="13" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 3h6M3 5l5 6M13 5l-5 6" stroke="currentColor" stroke-width="1"/></svg>
+    Execution Graph
+    <span class="nav-badge">Live</span>
+  </div>
+  <div class="nav-item" onclick="showView('transform')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="5" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="4" width="5" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6 8h4M8 6l2 2-2 2" stroke="currentColor" stroke-width="1"/></svg>
+    Data Transforms
+  </div>
+  <div class="nav-item" onclick="showView('agents')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.2"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Intelligence Agents
+    <span class="nav-badge">7</span>
+  </div>
+  <div class="nav-item" onclick="showView('compose')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+    System Composition
+  </div>
+  <div class="panel-section" style="margin-top:8px">Monitor</div>
+  <div class="nav-item" onclick="showView('telemetry')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><path d="M1 11l4-4 3 3 3-5 4 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Telemetry
+  </div>
+  <div class="nav-item" onclick="showView('causal')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Causal Log
+  </div>
+  <div class="panel-section" style="margin-top:8px">Config</div>
+  <div class="nav-item" onclick="showView('rules')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Determinism Rules
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main" id="main-content">
+
+  <!-- VIEW: EXECUTION GRAPH -->
+  <section class="view active" id="view-fabric">
+    <div class="section-header">
+      <span class="section-title">Execution Graph</span>
+      <span class="section-sub">real-time causal state propagation</span>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:16px">
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--green)" id="stat-nodes">12</div>
+        <div class="stat-label">Active Nodes</div>
+        <div class="stat-delta up">↑ 2 from last cycle</div>
+      </div>
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--accent)" id="stat-edges">18</div>
+        <div class="stat-label">Causal Edges</div>
+        <div class="stat-delta up">↑ 3 propagating</div>
+      </div>
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--cyan)" id="stat-throughput">4.2k</div>
+        <div class="stat-label">Events / sec</div>
+        <div class="stat-delta up">↑ 12% vs baseline</div>
+      </div>
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--amber)" id="stat-latency">1.4ms</div>
+        <div class="stat-label">Median Latency</div>
+        <div class="stat-delta down">↓ deterministic</div>
+      </div>
+    </div>
+
+    <div class="canvas-toolbar">
+      <button class="btn primary" onclick="runFabric()">▶ Execute Fabric</button>
+      <button class="btn" onclick="pauseFabric()">⏸ Pause</button>
+      <button class="btn" onclick="resetFabric()">↺ Reset</button>
+      <button class="btn" onclick="addNode()">＋ Add Node</button>
+      <button class="btn danger" onclick="injectFault()">⚡ Inject Fault</button>
+      <span style="margin-left:auto;font-size:10px;color:var(--muted)" id="fabric-status">IDLE — click Execute to begin</span>
+    </div>
+
+    <div id="fabric-canvas">
+      <svg id="fabric-svg"></svg>
+      <div id="node-detail">
+        <div class="detail-title" id="detail-name">—</div>
+        <div class="detail-row"><span class="detail-key">state</span><span class="detail-val" id="detail-state">—</span></div>
+        <div class="detail-row"><span class="detail-key">events</span><span class="detail-val" id="detail-events">—</span></div>
+        <div class="detail-row"><span class="detail-key">latency</span><span class="detail-val" id="detail-latency">—</span></div>
+        <div class="detail-row"><span class="detail-key">deps</span><span class="detail-val" id="detail-deps">—</span></div>
+        <div style="margin-top:8px;font-size:9px;color:var(--muted)">click node to dismiss</div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="inspector-title">Execution Log</div>
+      <div class="log-container" id="exec-log">
+        <div class="log-entry"><span class="log-time">00:00.000</span><span class="log-level info">INFO</span><span class="log-msg">UDCSEF fabric initialized — deterministic mode active</span></div>
+        <div class="log-entry"><span class="log-time">00:00.001</span><span class="log-level ok">OK</span><span class="log-msg">State topology loaded: 12 nodes, 18 causal edges</span></div>
+        <div class="log-entry"><span class="log-time">00:00.002</span><span class="log-level info">INFO</span><span class="log-msg">Awaiting execution trigger...</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: DATA TRANSFORMS -->
+  <section class="view" id="view-transform">
+    <div class="section-header">
+      <span class="section-title">Data Transformation</span>
+      <span class="section-sub">deterministic schema evolution</span>
+    </div>
+
+    <div class="pipeline" style="margin-bottom:20px">
+      <div class="stage active-stage" onclick="selectStage(0)">
+        <div class="stage-name">Ingest</div>
+        <div class="stage-desc">raw stream intake</div>
+        <div class="stage-progress" id="sp-0" style="width:100%"></div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="stage" onclick="selectStage(1)">
+        <div class="stage-name">Validate</div>
+        <div class="stage-desc">schema conformance</div>
+        <div class="stage-progress" id="sp-1" style="width:0%"></div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="stage" onclick="selectStage(2)">
+        <div class="stage-name">Normalize</div>
+        <div class="stage-desc">type coercion</div>
+        <div class="stage-progress" id="sp-2" style="width:0%"></div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="stage" onclick="selectStage(3)">
+        <div class="stage-name">Enrich</div>
+        <div class="stage-desc">causal annotation</div>
+        <div class="stage-progress" id="sp-3" style="width:0%"></div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="stage" onclick="selectStage(4)">
+        <div class="stage-name">Emit</div>
+        <div class="stage-desc">downstream dispatch</div>
+        <div class="stage-progress" id="sp-4" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div class="canvas-toolbar">
+        <button class="btn primary" onclick="runTransform()">▶ Run Transform</button>
+        <button class="btn" onclick="loadSample()">⬇ Load Sample</button>
+        <span id="transform-status" style="font-size:10px;color:var(--muted);margin-left:auto">ready</span>
+      </div>
+    </div>
+
+    <div class="transform-io">
+      <div class="io-panel">
+        <div class="io-header">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1"/><path d="M3 5h6M3 7h4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+          Input Payload
+        </div>
+        <div class="io-body" id="transform-input">{
+  "event_id": "evt_9f3a2bc1",
+  "source": "sensor://node-7",
+  "timestamp": 1743897600,
+  "schema_version": "2.1",
+  "payload": {
+    "temperature": "98.6F",
+    "pressure": "1013hPa",
+    "state": "ACTIVE",
+    "causal_parent": null
+  }
+}</div>
+      </div>
+      <div class="io-arrow">⇒</div>
+      <div class="io-panel">
+        <div class="io-header" style="color:var(--green)">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1"/><path d="M4 6l2 2 4-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Transformed Output
+        </div>
+        <div class="io-body" id="transform-output" style="color:var(--muted)">awaiting transform...</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="section-header">
+        <span class="section-title" style="font-size:16px">Transform DSL</span>
+        <span class="section-sub">declarative rule syntax</span>
+      </div>
+      <div class="code-block"><span class="kw">transform</span> <span class="fn">NormalizeSensorEvent</span> <span class="typ">: SensorRawEvent → SensorEvent</span> {
+  <span class="cmt">// Deterministic field mapping with causal provenance</span>
+  <span class="fn">field</span> event_id    → <span class="fn">id</span>          <span class="str">:: uuid(stable)</span>
+  <span class="fn">field</span> timestamp   → <span class="fn">occurred_at</span> <span class="str">:: iso8601(utc)</span>
+  <span class="fn">field</span> source      → <span class="fn">origin</span>      <span class="str">:: uri(validated)</span>
+
+  <span class="cmt">// Unit coercion — causal annotation preserved</span>
+  <span class="fn">convert</span> payload.temperature  <span class="kw">from</span> <span class="typ">Fahrenheit</span> <span class="kw">to</span> <span class="typ">Celsius</span>
+  <span class="fn">convert</span> payload.pressure      <span class="kw">from</span> <span class="typ">hPa</span>        <span class="kw">to</span> <span class="typ">Pa</span>
+
+  <span class="cmt">// Derive causal lineage</span>
+  <span class="fn">derive</span> causal_chain <span class="kw">=</span> <span class="fn">trace</span>(causal_parent, depth: <span class="num">8</span>)
+
+  <span class="cmt">// Emit deterministic hash for deduplication</span>
+  <span class="fn">emit</span> content_hash <span class="kw">=</span> <span class="fn">sha256</span>(id, occurred_at, origin, payload)
+}</div>
+    </div>
+  </section>
+
+  <!-- VIEW: AGENTS -->
+  <section class="view" id="view-agents">
+    <div class="section-header">
+      <span class="section-title">Intelligence Agents</span>
+      <span class="section-sub">autonomous distributed reasoning units</span>
+    </div>
+
+    <div class="agent-grid">
+      <div class="agent-card type-inference" onclick="selectAgent('infer')">
+        <div class="agent-header">
+          <div class="agent-icon" style="background:rgba(79,142,247,0.12)">🧠</div>
+          <div>
+            <div class="agent-name">CausalInfer</div>
+            <div class="agent-role">Causal Inference Engine</div>
+          </div>
+          <span class="pill green" style="margin-left:auto;font-size:9px"><span class="dot"></span> running</span>
+        </div>
+        <div class="agent-graph">
+          <div class="mini-bar-row"><span class="mini-bar-label">accuracy</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:94%;background:var(--accent)"></div></div><span class="mini-bar-val">94%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">throughput</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:78%;background:var(--green)"></div></div><span class="mini-bar-val">78%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">confidence</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:87%;background:var(--cyan)"></div></div><span class="mini-bar-val">87%</span></div>
+        </div>
+        <div class="agent-meta">
+          <span class="tag" style="color:var(--accent);border-color:rgba(79,142,247,0.3)">bayesian</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">do-calculus</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">counterfactual</span>
+        </div>
+      </div>
+
+      <div class="agent-card type-transform" onclick="selectAgent('transform')">
+        <div class="agent-header">
+          <div class="agent-icon" style="background:rgba(16,208,132,0.1)">⚡</div>
+          <div>
+            <div class="agent-name">SchemaWeaver</div>
+            <div class="agent-role">Adaptive Schema Transformer</div>
+          </div>
+          <span class="pill green" style="margin-left:auto;font-size:9px"><span class="dot"></span> running</span>
+        </div>
+        <div class="agent-graph">
+          <div class="mini-bar-row"><span class="mini-bar-label">coverage</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:100%;background:var(--green)"></div></div><span class="mini-bar-val">100%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">errors</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:2%;background:var(--red)"></div></div><span class="mini-bar-val">0.2%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">latency</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:60%;background:var(--cyan)"></div></div><span class="mini-bar-val">0.6ms</span></div>
+        </div>
+        <div class="agent-meta">
+          <span class="tag" style="color:var(--green);border-color:rgba(16,208,132,0.3)">streaming</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">arrow IPC</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">versioned</span>
+        </div>
+      </div>
+
+      <div class="agent-card type-compose" onclick="selectAgent('compose')">
+        <div class="agent-header">
+          <div class="agent-icon" style="background:rgba(245,158,11,0.1)">🔗</div>
+          <div>
+            <div class="agent-name">SysComposer</div>
+            <div class="agent-role">Autonomous System Compositor</div>
+          </div>
+          <span class="pill amber" style="margin-left:auto;font-size:9px"><span class="dot"></span> busy</span>
+        </div>
+        <div class="agent-graph">
+          <div class="mini-bar-row"><span class="mini-bar-label">systems</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:72%;background:var(--amber)"></div></div><span class="mini-bar-val">72%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">health</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:96%;background:var(--green)"></div></div><span class="mini-bar-val">96%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">adapt</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:84%;background:var(--cyan)"></div></div><span class="mini-bar-val">84%</span></div>
+        </div>
+        <div class="agent-meta">
+          <span class="tag" style="color:var(--amber);border-color:rgba(245,158,11,0.3)">autonomous</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">self-healing</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">WASM</span>
+        </div>
+      </div>
+
+      <div class="agent-card type-monitor" onclick="selectAgent('monitor')">
+        <div class="agent-header">
+          <div class="agent-icon" style="background:rgba(6,182,212,0.1)">📡</div>
+          <div>
+            <div class="agent-name">OracleWatch</div>
+            <div class="agent-role">Distributed State Observer</div>
+          </div>
+          <span class="pill green" style="margin-left:auto;font-size:9px"><span class="dot"></span> running</span>
+        </div>
+        <div class="agent-graph">
+          <div class="mini-bar-row"><span class="mini-bar-label">coverage</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:100%;background:var(--cyan)"></div></div><span class="mini-bar-val">100%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">lag</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:15%;background:var(--amber)"></div></div><span class="mini-bar-val">0.15s</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">alerts</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:10%;background:var(--red)"></div></div><span class="mini-bar-val">2</span></div>
+        </div>
+        <div class="agent-meta">
+          <span class="tag" style="color:var(--cyan);border-color:rgba(6,182,212,0.3)">eBPF</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">zero-copy</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">CRDT</span>
+        </div>
+      </div>
+
+      <div class="agent-card type-inference" onclick="selectAgent('planner')">
+        <div class="agent-header">
+          <div class="agent-icon" style="background:rgba(124,58,237,0.1)">🗺</div>
+          <div>
+            <div class="agent-name">PathPlanner</div>
+            <div class="agent-role">Execution Path Optimizer</div>
+          </div>
+          <span class="pill green" style="margin-left:auto;font-size:9px"><span class="dot"></span> running</span>
+        </div>
+        <div class="agent-graph">
+          <div class="mini-bar-row"><span class="mini-bar-label">plans</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:88%;background:var(--accent2)"></div></div><span class="mini-bar-val">88%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">optimal</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:73%;background:var(--green)"></div></div><span class="mini-bar-val">73%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">cache</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:91%;background:var(--amber)"></div></div><span class="mini-bar-val">91%</span></div>
+        </div>
+        <div class="agent-meta">
+          <span class="tag" style="color:var(--accent2);border-color:rgba(124,58,237,0.3)">MCTS</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">DAG-aware</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">memoized</span>
+        </div>
+      </div>
+
+      <div class="agent-card type-transform" onclick="selectAgent('entropy')">
+        <div class="agent-header">
+          <div class="agent-icon" style="background:rgba(236,72,153,0.1)">🌀</div>
+          <div>
+            <div class="agent-name">EntropyGuard</div>
+            <div class="agent-role">Determinism Enforcer</div>
+          </div>
+          <span class="pill green" style="margin-left:auto;font-size:9px"><span class="dot"></span> running</span>
+        </div>
+        <div class="agent-graph">
+          <div class="mini-bar-row"><span class="mini-bar-label">entropy</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:3%;background:var(--red)"></div></div><span class="mini-bar-val">0.03</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">seeded</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:100%;background:var(--green)"></div></div><span class="mini-bar-val">100%</span></div>
+          <div class="mini-bar-row"><span class="mini-bar-label">replays</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:55%;background:var(--cyan)"></div></div><span class="mini-bar-val">55k</span></div>
+        </div>
+        <div class="agent-meta">
+          <span class="tag" style="color:var(--pink);border-color:rgba(236,72,153,0.3)">hash-chain</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">VRF</span>
+          <span class="tag" style="color:var(--muted);border-color:var(--border2)">auditable</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: SYSTEM COMPOSITION -->
+  <section class="view" id="view-compose">
+    <div class="section-header">
+      <span class="section-title">System Composition</span>
+      <span class="section-sub">autonomous declarative assembly</span>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-title">Composition Blueprint</div>
+        <div class="code-block" style="height:220px;overflow:auto"><span class="kw">system</span> <span class="fn">DistributedIntelligence</span> {
+  <span class="cmt">// Declare participating agents</span>
+  <span class="fn">agents</span>: [
+    <span class="str">CausalInfer</span>  <span class="kw">@</span> <span class="num">3</span> replicas,
+    <span class="str">SchemaWeaver</span> <span class="kw">@</span> <span class="num">2</span> replicas,
+    <span class="str">OracleWatch</span>  <span class="kw">@</span> <span class="num">1</span> replica
+  ]
+
+  <span class="cmt">// Causal wiring — deterministic edges</span>
+  <span class="fn">wire</span> <span class="str">sensor-ingress</span>  → <span class="str">SchemaWeaver</span>
+  <span class="fn">wire</span> <span class="str">SchemaWeaver</span>    → <span class="str">CausalInfer</span>
+  <span class="fn">wire</span> <span class="str">CausalInfer</span>    → <span class="str">OracleWatch</span>
+  <span class="fn">wire</span> <span class="str">OracleWatch</span>    → <span class="str">output-bus</span>
+
+  <span class="cmt">// Fault tolerance policy</span>
+  <span class="kw">on_fault</span>: <span class="fn">retry</span>(max=<span class="num">3</span>) | <span class="fn">reroute</span> | <span class="fn">halt</span>
+
+  <span class="cmt">// Determinism contract</span>
+  <span class="kw">guarantee</span>: <span class="fn">total_order</span>, <span class="fn">idempotent</span>, <span class="fn">reproducible</span>
+}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Assembly Status</div>
+        <div style="margin-bottom:12px">
+          <div class="metric-bar">
+            <div class="metric-bar-header"><span>Agent Readiness</span><span style="color:var(--green)">6/7</span></div>
+            <div class="metric-track"><div class="metric-fill" style="width:86%;background:var(--green)"></div></div>
+          </div>
+          <div class="metric-bar">
+            <div class="metric-bar-header"><span>Wire Health</span><span style="color:var(--accent)">100%</span></div>
+            <div class="metric-track"><div class="metric-fill" style="width:100%;background:var(--accent)"></div></div>
+          </div>
+          <div class="metric-bar">
+            <div class="metric-bar-header"><span>Determinism Score</span><span style="color:var(--cyan)">99.97%</span></div>
+            <div class="metric-track"><div class="metric-fill" style="width:99.97%;background:var(--cyan)"></div></div>
+          </div>
+          <div class="metric-bar">
+            <div class="metric-bar-header"><span>Fault Coverage</span><span style="color:var(--amber)">94%</span></div>
+            <div class="metric-track"><div class="metric-fill" style="width:94%;background:var(--amber)"></div></div>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Auto-heal on fault</span>
+          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Deterministic seed lock</span>
+          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Causal audit log</span>
+          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Speculative execution</span>
+          <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Composition Rules — Determinism Contract</div>
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">R1</div><div><div class="rule-text">All state transitions must be total-order serializable — concurrent writes resolved via vector clock ordering.</div><div class="rule-tag">causal-consistency · lamport-ts</div></div></div>
+        <div class="rule-item"><div class="rule-num">R2</div><div><div class="rule-text">Every transform must be pure and idempotent: same input → same output, regardless of execution count or timing.</div><div class="rule-tag">pure-function · content-addressed</div></div></div>
+        <div class="rule-item"><div class="rule-num">R3</div><div><div class="rule-text">All randomness must be seeded from the global VRF chain — no untracked entropy sources permitted.</div><div class="rule-tag">deterministic-rng · vrf · auditable</div></div></div>
+        <div class="rule-item"><div class="rule-num">R4</div><div><div class="rule-text">Agents must declare their full causal dependency graph before instantiation — circular deps rejected at compile time.</div><div class="rule-tag">DAG-validation · topo-sort</div></div></div>
+        <div class="rule-item"><div class="rule-num">R5</div><div><div class="rule-text">Fault injection replay must produce bit-identical output to the original execution for determinism verification.</div><div class="rule-tag">chaos-engineering · replay-testing</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: TELEMETRY -->
+  <section class="view" id="view-telemetry">
+    <div class="section-header">
+      <span class="section-title">Telemetry</span>
+      <span class="section-sub">distributed observability</span>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:16px">
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--green)" id="tele-events">0</div>
+        <div class="stat-label">Total Events</div>
+      </div>
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--red)">2</div>
+        <div class="stat-label">Anomalies</div>
+      </div>
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--cyan)">99.97%</div>
+        <div class="stat-label">Determinism</div>
+      </div>
+      <div class="card card-sm">
+        <div class="stat-value" style="color:var(--amber)">4.2ms</div>
+        <div class="stat-label">P99 Latency</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Event Throughput — Last 24h (hourly)</div>
+      <canvas id="throughput-chart" height="90"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Execution Heatmap — 24h × 7 days</div>
+      <div class="heatmap" id="heatmap" style="margin-bottom:6px"></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:9px;color:var(--muted);margin-top:4px">
+        <span>low</span>
+        <div style="width:60px;height:4px;border-radius:2px;background:linear-gradient(90deg,rgba(79,142,247,0.1),var(--accent))"></div>
+        <span>high</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: CAUSAL LOG -->
+  <section class="view" id="view-causal">
+    <div class="section-header">
+      <span class="section-title">Causal Log</span>
+      <span class="section-sub">deterministic event lineage</span>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">State Snapshot</div>
+        <table class="state-table">
+          <thead><tr><th>Key</th><th>Value</th><th>Type</th><th>Version</th></tr></thead>
+          <tbody id="state-matrix">
+            <tr><td>fabric.mode</td><td class="state-val">"deterministic"</td><td class="state-type">string</td><td>v1</td></tr>
+            <tr><td>clock.lamport</td><td class="state-val">1024</td><td class="state-type">uint64</td><td>v1</td></tr>
+            <tr><td>agents.alive</td><td class="state-val">7</td><td class="state-type">int</td><td>v1</td></tr>
+            <tr><td>entropy.seed</td><td class="state-val">0xf3a2c9b1</td><td class="state-type">hex</td><td>v1</td></tr>
+            <tr><td>topology.hash</td><td class="state-val">0xabc12f99</td><td class="state-type">sha256</td><td>v1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">Causal Chain</div>
+        <div class="causal-chain">
+          <div class="causal-item">
+            <div class="causal-dot" style="border-color:var(--accent);color:var(--accent)">✓</div>
+            <div class="causal-body">
+              <div class="causal-event">Fabric topology loaded from content-addressed store</div>
+              <div class="causal-meta">T+0ms · hash: 0xabc12f99 · agent: SysComposer</div>
+            </div>
+          </div>
+          <div class="causal-item">
+            <div class="causal-dot" style="border-color:var(--green);color:var(--green)">✓</div>
+            <div class="causal-body">
+              <div class="causal-event">All 7 agents passed determinism contract validation</div>
+              <div class="causal-meta">T+2ms · agent: EntropyGuard</div>
+            </div>
+          </div>
+          <div class="causal-item">
+            <div class="causal-dot" style="border-color:var(--green);color:var(--green)">✓</div>
+            <div class="causal-body">
+              <div class="causal-event">VRF seed chain anchored to genesis block</div>
+              <div class="causal-meta">T+4ms · seed: 0xf3a2c9b1 · agent: EntropyGuard</div>
+            </div>
+          </div>
+          <div class="causal-item">
+            <div class="causal-dot" style="border-color:var(--amber);color:var(--amber)">!</div>
+            <div class="causal-body">
+              <div class="causal-event">Anomaly detected: node-5 latency spike (12ms vs baseline 1.4ms)</div>
+              <div class="causal-meta">T+88ms · agent: OracleWatch · severity: warn</div>
+            </div>
+          </div>
+          <div class="causal-item">
+            <div class="causal-dot" style="border-color:var(--green);color:var(--green)">✓</div>
+            <div class="causal-body">
+              <div class="causal-event">Auto-heal triggered: rerouted through backup causal path</div>
+              <div class="causal-meta">T+90ms · agent: SysComposer · recovered in 2ms</div>
+            </div>
+          </div>
+          <div class="causal-item">
+            <div class="causal-dot" style="border-color:var(--cyan);color:var(--cyan)">→</div>
+            <div class="causal-body">
+              <div class="causal-event">Lamport clock ticked: T=1024 — all agents synchronized</div>
+              <div class="causal-meta">T+100ms · global sync</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: RULES -->
+  <section class="view" id="view-rules">
+    <div class="section-header">
+      <span class="section-title">Determinism Rules</span>
+      <span class="section-sub">formal execution contracts</span>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="selectTab(this,'rules-core')">Core Rules</div>
+      <div class="tab" onclick="selectTab(this,'rules-dist')">Distribution</div>
+      <div class="tab" onclick="selectTab(this,'rules-fault')">Fault Model</div>
+    </div>
+    <div id="rules-core">
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">D1</div><div><div class="rule-text">Execution is fully deterministic given an identical initial state and input sequence — no ambient state, no side-channel entropy.</div><div class="rule-tag">determinism · pure-computation</div></div></div>
+        <div class="rule-item"><div class="rule-num">D2</div><div><div class="rule-text">State transitions form a monotone lattice — values may only advance, never regress. Enables wait-free reads across distributed nodes.</div><div class="rule-tag">monotone · CRDT · wait-free</div></div></div>
+        <div class="rule-item"><div class="rule-num">D3</div><div><div class="rule-text">Causal ordering is enforced via vector clocks — no message may be processed before its causal predecessors are committed.</div><div class="rule-tag">vector-clock · causal-consistency</div></div></div>
+        <div class="rule-item"><div class="rule-num">D4</div><div><div class="rule-text">All operations are idempotent under a content-addressed deduplication key derived from the causal parent hash.</div><div class="rule-tag">idempotency · content-hash · exactly-once</div></div></div>
+        <div class="rule-item"><div class="rule-num">D5</div><div><div class="rule-text">The execution graph is a DAG — cycles are rejected at compile time via topological sort. Mutual causation modeled as shared parent.</div><div class="rule-tag">DAG · topo-sort · compile-time</div></div></div>
+      </div>
+    </div>
+    <div id="rules-dist" style="display:none">
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">N1</div><div><div class="rule-text">Network partitions are first-class — agents must declare partition tolerance policy (AP or CP) before fabric assembly.</div><div class="rule-tag">CAP-theorem · partition-policy</div></div></div>
+        <div class="rule-item"><div class="rule-num">N2</div><div><div class="rule-text">Gossip protocol synchronizes global Lamport clock — maximum allowed skew is 2 message delays.</div><div class="rule-tag">gossip · lamport · clock-sync</div></div></div>
+        <div class="rule-item"><div class="rule-num">N3</div><div><div class="rule-text">Agents communicate via immutable message envelopes — no in-place mutation of in-flight events permitted.</div><div class="rule-tag">immutable · message-passing</div></div></div>
+      </div>
+    </div>
+    <div id="rules-fault" style="display:none">
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">F1</div><div><div class="rule-text">Byzantine fault tolerance is achieved via BFT-SMaRt consensus for critical state transitions requiring 2f+1 agreement.</div><div class="rule-tag">BFT · consensus · 2f+1</div></div></div>
+        <div class="rule-item"><div class="rule-num">F2</div><div><div class="rule-text">Crash faults trigger automatic reroute through the next-best causal path as computed by PathPlanner during the last heartbeat.</div><div class="rule-tag">crash-fault · reroute · heartbeat</div></div></div>
+        <div class="rule-item"><div class="rule-num">F3</div><div><div class="rule-text">Injected faults for testing must replay deterministically — fault seed is stored in the causal log for exact reproduction.</div><div class="rule-tag">fault-injection · reproducibility</div></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- RIGHT PANEL -->
+<aside class="right-panel">
+  <div>
+    <div class="inspector-title">System Health</div>
+    <div class="metric-bar">
+      <div class="metric-bar-header"><span>CPU</span><span id="cpu-val">38%</span></div>
+      <div class="metric-track"><div class="metric-fill" id="cpu-bar" style="width:38%;background:var(--accent)"></div></div>
+    </div>
+    <div class="metric-bar">
+      <div class="metric-bar-header"><span>Memory</span><span>2.4 GB</span></div>
+      <div class="metric-track"><div class="metric-fill" style="width:60%;background:var(--cyan)"></div></div>
+    </div>
+    <div class="metric-bar">
+      <div class="metric-bar-header"><span>Network I/O</span><span id="net-val">1.2 GB/s</span></div>
+      <div class="metric-track"><div class="metric-fill" id="net-bar" style="width:48%;background:var(--green)"></div></div>
+    </div>
+    <div class="metric-bar">
+      <div class="metric-bar-header"><span>Determinism</span><span style="color:var(--green)">99.97%</span></div>
+      <div class="metric-track"><div class="metric-fill" style="width:99.97%;background:var(--green)"></div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="inspector-title">Active Nodes</div>
+    <div id="node-list" style="display:flex;flex-direction:column;gap:4px"></div>
+  </div>
+
+  <div>
+    <div class="inspector-title">Quick Config</div>
+    <div class="toggle-row">
+      <span class="toggle-label" style="font-size:10px">Auto-replay on fault</span>
+      <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label" style="font-size:10px">Verbose causal trace</span>
+      <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label" style="font-size:10px">Speculative prefetch</span>
+      <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+
+  <div>
+    <div class="inspector-title">Causal Lineage</div>
+    <div style="font-size:10px;color:var(--muted);line-height:1.8">
+      <div style="color:var(--text)">Current Head</div>
+      <div style="color:var(--cyan);word-break:break-all;font-size:9px" id="current-hash">0xabc12f99...</div>
+      <div style="margin-top:6px;color:var(--text)">Parent</div>
+      <div style="color:var(--muted);font-size:9px">0x9f3a2bc1...</div>
+      <div style="margin-top:6px;color:var(--text)">Lamport T</div>
+      <div style="color:var(--amber)" id="lamport-t">1024</div>
+    </div>
+  </div>
+</aside>
+
+</div><!-- end shell -->
+
+<script>
+// ─── CLOCK ──────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toISOString().replace('T', ' ').slice(0,19) + ' UTC';
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ─── NAVIGATION ─────────────────────────────────────
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+
+  if (id === 'telemetry') initTelemetry();
+}
+
+function selectTab(el, id) {
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['rules-core','rules-dist','rules-fault'].forEach(rid => {
+    document.getElementById(rid).style.display = rid === id ? 'block' : 'none';
+  });
+}
+
+// ─── NODE DATA ───────────────────────────────────────
+const NODES = [
+  { id: 'n1', name: 'IngestionGate', type: 'INPUT',    x: 0.12, y: 0.15, state: 'running', events: 18420, latency: '0.8ms', deps: 0 },
+  { id: 'n2', name: 'SchemaBridge',  type: 'TRANSFORM', x: 0.35, y: 0.12, state: 'running', events: 18200, latency: '1.1ms', deps: 1 },
+  { id: 'n3', name: 'CausalKernel',  type: 'COMPUTE',  x: 0.55, y: 0.22, state: 'running', events: 17900, latency: '1.4ms', deps: 2 },
+  { id: 'n4', name: 'StateOracle',   type: 'STATE',    x: 0.78, y: 0.15, state: 'running', events: 17850, latency: '0.9ms', deps: 1 },
+  { id: 'n5', name: 'FaultRouter',   type: 'ROUTE',    x: 0.20, y: 0.42, state: 'pending', events: 9100,  latency: '12ms',  deps: 1 },
+  { id: 'n6', name: 'PathSolver',    type: 'PLAN',     x: 0.45, y: 0.48, state: 'running', events: 8900,  latency: '1.6ms', deps: 2 },
+  { id: 'n7', name: 'EntropyLock',   type: 'GUARD',    x: 0.70, y: 0.42, state: 'running', events: 55000, latency: '0.2ms', deps: 0 },
+  { id: 'n8', name: 'AgentBus',      type: 'BUS',      x: 0.85, y: 0.55, state: 'running', events: 44200, latency: '0.5ms', deps: 3 },
+  { id: 'n9', name: 'ComposeEngine', type: 'COMPOSE',  x: 0.35, y: 0.70, state: 'running', events: 6200,  latency: '2.1ms', deps: 2 },
+  { id:'n10', name: 'DataSink',      type: 'OUTPUT',   x: 0.60, y: 0.78, state: 'running', events: 18100, latency: '0.7ms', deps: 3 },
+  { id:'n11', name: 'AuditLedger',   type: 'AUDIT',    x: 0.82, y: 0.80, state: 'running', events: 18420, latency: '0.3ms', deps: 2 },
+  { id:'n12', name: 'ClockSync',     type: 'SYNC',     x: 0.15, y: 0.75, state: 'idle',    events: 1024,  latency: '0.1ms', deps: 0 },
+];
+const EDGES = [
+  ['n1','n2'],['n1','n5'],['n2','n3'],['n2','n6'],
+  ['n3','n4'],['n3','n6'],['n4','n8'],['n5','n6'],
+  ['n6','n9'],['n7','n8'],['n7','n3'],['n8','n10'],
+  ['n8','n11'],['n9','n10'],['n10','n11'],['n12','n1'],
+  ['n12','n7'],['n6','n8'],
+];
+
+let fabricRunning = false;
+let selectedNode = null;
+let animFrame = null;
+
+// ─── RENDER FABRIC ───────────────────────────────────
+function renderFabric() {
+  const canvas = document.getElementById('fabric-canvas');
+  const svg = document.getElementById('fabric-svg');
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+
+  // Remove old nodes (keep svg)
+  canvas.querySelectorAll('.fabric-node').forEach(n => n.remove());
+
+  // Draw edges
+  const edgePaths = EDGES.map(([a, b]) => {
+    const na = NODES.find(n => n.id === a);
+    const nb = NODES.find(n => n.id === b);
+    const x1 = na.x * W, y1 = na.y * H;
+    const x2 = nb.x * W, y2 = nb.y * H;
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - 20;
+    const isActive = fabricRunning && (na.state === 'running' || nb.state === 'running');
+    return `<path class="edge-path ${isActive ? 'active-edge' : ''}" d="M${x1},${y1} Q${mx},${my} ${x2},${y2}" marker-end="url(#arrowhead)"/>`;
+  }).join('');
+
+  svg.innerHTML = `
+    <defs>
+      <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3 z" fill="rgba(79,142,247,0.4)"/>
+      </marker>
+    </defs>
+    ${edgePaths}
+  `;
+
+  // Draw nodes
+  NODES.forEach(node => {
+    const div = document.createElement('div');
+    div.className = `fabric-node ${node.state === 'pending' ? 'pending' : node.state === 'error' ? 'error' : node.state === 'running' ? 'running' : ''} ${selectedNode === node.id ? 'selected' : ''}`;
+    div.style.left = (node.x * W) + 'px';
+    div.style.top  = (node.y * H) + 'px';
+    div.innerHTML = `
+      <div class="node-type">${node.type}</div>
+      <div class="node-name">${node.name}</div>
+      <div class="node-status ${node.state}">${node.state}</div>
+    `;
+    div.onclick = (e) => { e.stopPropagation(); showNodeDetail(node, e); };
+    canvas.appendChild(div);
+  });
+
+  // Build right-panel node list
+  const nl = document.getElementById('node-list');
+  nl.innerHTML = NODES.slice(0, 6).map(n => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <div class="dot" style="color:${n.state==='running'?'var(--green)':n.state==='pending'?'var(--amber)':'var(--muted)'}"></div>
+      <span style="font-size:10px;color:var(--text)">${n.name}</span>
+      <span style="font-size:9px;color:var(--muted);margin-left:auto">${n.latency}</span>
+    </div>
+  `).join('');
+}
+
+function showNodeDetail(node, e) {
+  if (selectedNode === node.id) { hideNodeDetail(); return; }
+  selectedNode = node.id;
+  const detail = document.getElementById('node-detail');
+  detail.style.display = 'block';
+  detail.style.left = Math.min(e.offsetX + 10, e.currentTarget.parentElement.offsetWidth - 220) + 'px';
+  detail.style.top  = Math.min(e.offsetY + 10, e.currentTarget.parentElement.offsetHeight - 160) + 'px';
+  document.getElementById('detail-name').textContent = node.name;
+  document.getElementById('detail-state').textContent = node.state;
+  document.getElementById('detail-events').textContent = node.events.toLocaleString();
+  document.getElementById('detail-latency').textContent = node.latency;
+  document.getElementById('detail-deps').textContent = node.deps;
+  renderFabric();
+}
+
+function hideNodeDetail() {
+  selectedNode = null;
+  document.getElementById('node-detail').style.display = 'none';
+  renderFabric();
+}
+
+document.getElementById('fabric-canvas').addEventListener('click', hideNodeDetail);
+
+// ─── FABRIC CONTROLS ─────────────────────────────────
+let logTime = 0;
+function addLog(level, msg) {
+  logTime += Math.round(Math.random() * 15 + 1);
+  const ms = String(logTime).padStart(3, '0');
+  const s  = String(Math.floor(logTime / 1000)).padStart(2, '0');
+  const log = document.getElementById('exec-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${s}:${ms.slice(-3)}.${String(Math.floor(Math.random()*999)).padStart(3,'0')}</span><span class="log-level ${level}">${level.toUpperCase()}</span><span class="log-msg">${msg}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+let fabricInterval = null;
+let lamport = 1024;
+
+function runFabric() {
+  if (fabricRunning) return;
+  fabricRunning = true;
+  document.getElementById('fabric-status').textContent = 'RUNNING — causal propagation active';
+  addLog('ok', 'Execution fabric started — deterministic mode engaged');
+  addLog('info', 'Propagating causal state across 18 edges...');
+
+  NODES.forEach((n, i) => {
+    setTimeout(() => {
+      if (n.state === 'idle') n.state = 'running';
+      renderFabric();
+      addLog('ok', `Node ${n.name} transitioned → ${n.state}`);
+    }, i * 120);
+  });
+
+  fabricInterval = setInterval(() => {
+    lamport += Math.floor(Math.random() * 3 + 1);
+    document.getElementById('lamport-t').textContent = lamport;
+
+    const th = (4000 + Math.random() * 800).toFixed(0);
+    document.getElementById('stat-throughput').textContent = (th / 1000).toFixed(1) + 'k';
+    document.getElementById('stat-latency').textContent = (1.2 + Math.random() * 0.5).toFixed(1) + 'ms';
+
+    // Randomly flip some node states for drama
+    if (Math.random() < 0.1) {
+      const n = NODES[Math.floor(Math.random() * NODES.length)];
+      const was = n.state;
+      n.state = 'running';
+      if (was !== 'running') addLog('ok', `Node ${n.name} recovered → running`);
+    }
+    renderFabric();
+
+    // Update tele events
+    const tel = document.getElementById('tele-events');
+    if (tel) tel.textContent = (parseInt(tel.textContent.replace(/,/g,'') || 0) + Math.floor(Math.random()*200)).toLocaleString();
+  }, 800);
+}
+
+function pauseFabric() {
+  fabricRunning = false;
+  clearInterval(fabricInterval);
+  document.getElementById('fabric-status').textContent = 'PAUSED';
+  addLog('warn', 'Execution fabric paused by operator');
+  renderFabric();
+}
+
+function resetFabric() {
+  pauseFabric();
+  NODES.forEach(n => { if (n.id !== 'n12') n.state = 'idle'; });
+  NODES.find(n => n.id === 'n12').state = 'running';
+  logTime = 0;
+  document.getElementById('exec-log').innerHTML = '<div class="log-entry"><span class="log-time">00:000.000</span><span class="log-level info">INFO</span><span class="log-msg">Fabric reset — initial state restored</span></div>';
+  document.getElementById('fabric-status').textContent = 'IDLE — click Execute to begin';
+  renderFabric();
+}
+
+function addNode() {
+  const types = ['COMPUTE','TRANSFORM','ROUTE','STATE'];
+  const names = ['NewNode','AsyncProc','DataMux','CacheLayer','Replicator'];
+  const newN = {
+    id: 'nx' + Date.now(),
+    name: names[Math.floor(Math.random() * names.length)],
+    type: types[Math.floor(Math.random() * types.length)],
+    x: 0.2 + Math.random() * 0.6,
+    y: 0.2 + Math.random() * 0.6,
+    state: 'idle',
+    events: 0,
+    latency: '—',
+    deps: 0
+  };
+  NODES.push(newN);
+  addLog('info', `Node ${newN.name} (${newN.type}) added to fabric`);
+  document.getElementById('stat-nodes').textContent = NODES.length;
+  renderFabric();
+}
+
+function injectFault() {
+  const target = NODES.filter(n => n.state === 'running')[Math.floor(Math.random() * 4)];
+  if (!target) return;
+  target.state = 'error';
+  addLog('error', `FAULT INJECTED → ${target.name}: simulated crash failure`);
+  renderFabric();
+  setTimeout(() => {
+    target.state = 'running';
+    addLog('ok', `Auto-heal: ${target.name} recovered via causal reroute`);
+    renderFabric();
+  }, 2500);
+}
+
+// ─── TRANSFORM VIEW ──────────────────────────────────
+let stageIdx = 0;
+const stageData = [
+  null,
+  { valid: true, msg: '✓ Schema v2.1 conforms to contract' },
+  null,
+  null,
+  null,
+];
+
+function selectStage(i) {
+  document.querySelectorAll('.stage').forEach((s, idx) => {
+    s.classList.toggle('active-stage', idx === i);
+  });
+  stageIdx = i;
+}
+
+function loadSample() {
+  document.getElementById('transform-input').textContent = `{
+  "event_id": "evt_${Math.random().toString(16).slice(2,10)}",
+  "source": "sensor://node-${Math.floor(Math.random()*12)+1}",
+  "timestamp": ${Math.floor(Date.now()/1000)},
+  "schema_version": "2.1",
+  "payload": {
+    "temperature": "${(95 + Math.random()*10).toFixed(1)}F",
+    "pressure": "${(1005 + Math.random()*20).toFixed(0)}hPa",
+    "state": "ACTIVE",
+    "causal_parent": "0x${Math.random().toString(16).slice(2,10)}"
+  }
+}`;
+  document.getElementById('transform-output').textContent = 'awaiting transform...';
+  document.getElementById('transform-output').style.color = 'var(--muted)';
+  document.getElementById('transform-status').textContent = 'sample loaded';
+}
+
+function runTransform() {
+  const input = document.getElementById('transform-input').textContent;
+  document.getElementById('transform-status').textContent = 'processing...';
+
+  let i = 0;
+  const stages = document.querySelectorAll('.stage');
+  stages.forEach(s => { s.classList.remove('active-stage','done-stage'); document.getElementById('sp-' + [...stages].indexOf(s)).style.width = '0%'; });
+
+  function advanceStage(idx) {
+    if (idx >= stages.length) {
+      document.getElementById('transform-status').textContent = '✓ transform complete';
+      return;
+    }
+    stages.forEach((s, si) => {
+      s.classList.toggle('active-stage', si === idx);
+      if (si < idx) s.classList.add('done-stage');
+    });
+    let pct = 0;
+    const pid = 'sp-' + idx;
+    const interval = setInterval(() => {
+      pct = Math.min(pct + 8, 100);
+      document.getElementById(pid).style.width = pct + '%';
+      if (pct >= 100) {
+        clearInterval(interval);
+        setTimeout(() => advanceStage(idx + 1), 150);
+      }
+    }, 40);
+  }
+
+  advanceStage(0);
+
+  setTimeout(() => {
+    try {
+      const obj = JSON.parse(input);
+      const tempF = parseFloat(obj.payload.temperature);
+      const tempC = ((tempF - 32) * 5 / 9).toFixed(2);
+      const pressurePa = (parseFloat(obj.payload.pressure) * 100).toFixed(0);
+      const contentHash = '0x' + Math.abs(obj.event_id.split('').reduce((a, c) => (a << 5) + a + c.charCodeAt(0), 5381)).toString(16).slice(0,8).padStart(8,'0');
+
+      const output = {
+        id: obj.event_id,
+        occurred_at: new Date(obj.timestamp * 1000).toISOString(),
+        origin: obj.source,
+        schema: obj.schema_version,
+        payload: {
+          temperature_celsius: parseFloat(tempC),
+          pressure_pa: parseInt(pressurePa),
+          state: obj.payload.state,
+          causal_chain: [obj.payload.causal_parent, obj.event_id].filter(Boolean)
+        },
+        content_hash: contentHash,
+        deterministic: true
+      };
+      const out = document.getElementById('transform-output');
+      out.textContent = JSON.stringify(output, null, 2);
+      out.style.color = 'var(--green)';
+    } catch(e) {
+      document.getElementById('transform-output').textContent = '// Parse error: ' + e.message;
+      document.getElementById('transform-output').style.color = 'var(--red)';
+    }
+  }, 1400);
+}
+
+// ─── TELEMETRY CHART ─────────────────────────────────
+let telemetryInitialized = false;
+function initTelemetry() {
+  if (telemetryInitialized) return;
+  telemetryInitialized = true;
+
+  // Throughput chart
+  const canvas = document.getElementById('throughput-chart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.parentElement.offsetWidth - 32;
+  canvas.width = W;
+  canvas.height = 90;
+
+  const hours = Array.from({length:24}, (_,i) => i);
+  const data = hours.map(h => 1500 + Math.random() * 6000 * Math.sin(Math.PI * h / 12 + 0.5) ** 2);
+
+  const maxV = Math.max(...data);
+  const barW = W / 24 - 2;
+
+  ctx.clearRect(0, 0, W, 90);
+  hours.forEach((h, i) => {
+    const barH = (data[i] / maxV) * 70;
+    const x = i * (W / 24);
+    const isDark = h >= 22 || h <= 6;
+    ctx.fillStyle = isDark ? 'rgba(79,142,247,0.2)' : 'rgba(79,142,247,0.55)';
+    ctx.beginPath();
+    ctx.roundRect(x + 1, 80 - barH, barW, barH, 2);
+    ctx.fill();
+  });
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(107,114,128,0.8)';
+  ctx.font = '9px DM Mono, monospace';
+  [0,6,12,18,23].forEach(h => {
+    ctx.fillText(h + 'h', h * (W / 24), 90);
+  });
+
+  // Heatmap
+  const hm = document.getElementById('heatmap');
+  hm.innerHTML = '';
+  const intensities = Array.from({length: 24*7}, () => Math.random());
+  intensities.forEach((v, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'heat-cell';
+    const alpha = 0.08 + v * 0.85;
+    cell.style.background = `rgba(79,142,247,${alpha})`;
+    cell.title = `${Math.round(v * 8000)} events/h`;
+    hm.appendChild(cell);
+  });
+}
+
+// ─── CPU/NET SPARKLE ─────────────────────────────────
+setInterval(() => {
+  const cpu = 25 + Math.random() * 35;
+  document.getElementById('cpu-val').textContent = Math.round(cpu) + '%';
+  document.getElementById('cpu-bar').style.width = cpu + '%';
+  document.getElementById('cpu-bar').style.background = cpu > 70 ? 'var(--amber)' : 'var(--accent)';
+
+  const net = 0.8 + Math.random() * 1.5;
+  document.getElementById('net-val').textContent = net.toFixed(1) + ' GB/s';
+  document.getElementById('net-bar').style.width = (net / 3 * 100) + '%';
+
+  const h = '0x' + Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8,'0');
+  document.getElementById('current-hash').textContent = h + '...';
+}, 2000);
+
+// ─── INIT ────────────────────────────────────────────
+window.addEventListener('resize', renderFabric);
+setTimeout(renderFabric, 50);
+</script>
+</body>
+</html>

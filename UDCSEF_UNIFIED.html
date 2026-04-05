@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UDCSEF — Universal Deterministic Causal State Execution Fabric</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:    #07080b;
+  --bg2:   #0d0f15;
+  --bg3:   #12141c;
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.11);
+  --text:  #e2e5ee;
+  --muted: #5a6070;
+  --accent:  #4f8ef7;
+  --accent2: #7c3aed;
+  --green: #10d084;
+  --amber: #f59e0b;
+  --red:   #ef4444;
+  --cyan:  #06b6d4;
+  --pink:  #ec4899;
+  --mono:  'DM Mono', monospace;
+  --disp:  'Syne', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow: hidden;
+  height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(79,142,247,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,142,247,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+/* ── SHELL ─────────────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-columns: 200px 1fr 280px;
+  grid-template-rows: 46px 1fr;
+  height: 100vh;
+  position: relative; z-index: 1;
+}
+
+/* ── TOPBAR ─────────────────────────────────────────── */
+.topbar {
+  grid-column: 1/-1;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 18px;
+  background: rgba(7,8,11,0.96);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+}
+.topbar-brand {
+  font-family: var(--disp); font-size: 11px; font-weight: 800;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent);
+}
+.pill {
+  display:inline-flex; align-items:center; gap:5px;
+  padding: 2px 9px; border-radius: 100px;
+  font-size: 9px; letter-spacing: 0.06em; border: 1px solid;
+}
+.pill.green { color:var(--green); border-color:rgba(16,208,132,0.3); background:rgba(16,208,132,0.06); }
+.pill.blue  { color:var(--accent); border-color:rgba(79,142,247,0.3); background:rgba(79,142,247,0.06); }
+.pill.amber { color:var(--amber); border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.06); }
+.pill.red   { color:var(--red); border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); }
+.dot { width:6px; height:6px; border-radius:50%; background:currentColor; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.topbar-clock { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:.05em; margin-left:auto; }
+
+/* ── LEFT NAV ────────────────────────────────────────── */
+.left-panel {
+  border-right: 1px solid var(--border);
+  background: var(--bg2);
+  overflow-y: auto; padding: 14px 0;
+}
+.panel-section {
+  padding: 8px 14px 4px;
+  font-size: 8.5px; letter-spacing: 0.15em; color: var(--muted);
+  text-transform: uppercase; font-family: var(--disp); font-weight: 600;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 6px 14px; cursor: pointer;
+  transition: background .15s, color .15s;
+  font-size: 11px; color: var(--muted);
+  border-left: 2px solid transparent; user-select: none;
+}
+.nav-item:hover { background: rgba(255,255,255,0.035); color: var(--text); }
+.nav-item.active { background: rgba(79,142,247,0.08); color: var(--accent); border-left-color: var(--accent); }
+.nav-badge {
+  margin-left:auto; font-size:8px; padding:1px 6px;
+  border-radius:100px; background:rgba(79,142,247,0.15); color:var(--accent);
+}
+
+/* ── MAIN ─────────────────────────────────────────────── */
+.main { overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+
+/* ── VIEWS ─────────────────────────────────────────────── */
+.view { display:none; padding:18px; flex:1; overflow-y:auto; overflow-x:hidden; }
+.view.active { display: flex; flex-direction: column; gap: 14px; }
+
+.section-header { display:flex; align-items:baseline; gap:12px; }
+.section-title { font-family:var(--disp); font-size:19px; font-weight:800; color:var(--text); letter-spacing:-0.02em; }
+.section-sub { font-size:10px; color:var(--muted); letter-spacing:.04em; }
+
+/* ── CARDS ─────────────────────────────────────────────── */
+.card { background:var(--bg2); border:1px solid var(--border); border-radius:7px; padding:14px; }
+.card-sm { padding:10px; }
+.card-title { font-family:var(--disp); font-size:10px; font-weight:600; letter-spacing:.09em; color:var(--muted); text-transform:uppercase; margin-bottom:9px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:11px; }
+
+/* ── STAT CARD ─────────────────────────────────────────── */
+.stat-value { font-family:var(--disp); font-size:24px; font-weight:800; line-height:1; margin-bottom:3px; }
+.stat-label { font-size:10px; color:var(--muted); }
+.stat-delta { font-size:9px; margin-top:5px; }
+.stat-delta.up { color:var(--green); } .stat-delta.down { color:var(--red); }
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 13px; border-radius:5px; border:1px solid var(--border2);
+  background:var(--bg2); color:var(--text); font-family:var(--mono);
+  font-size:10px; cursor:pointer; transition:background .15s, border-color .15s;
+  user-select:none;
+}
+.btn:hover { background:var(--bg3); border-color:rgba(255,255,255,0.2); }
+.btn:active { transform:scale(0.97); }
+.btn.primary { background:rgba(79,142,247,0.14); border-color:rgba(79,142,247,0.4); color:var(--accent); }
+.btn.primary:hover { background:rgba(79,142,247,0.22); }
+.btn.success { background:rgba(16,208,132,0.1); border-color:rgba(16,208,132,0.35); color:var(--green); }
+.btn.danger { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.3); color:var(--red); }
+.btn:disabled { opacity:.35; cursor:not-allowed; }
+.btn-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* ── LOG ─────────────────────────────────────────────────── */
+.log-box { background:var(--bg); border:1px solid var(--border); border-radius:5px; overflow-y:auto; padding:8px; font-size:10px; }
+.log-entry { display:flex; gap:9px; padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.025); animation:fadeUp .25s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(-3px)} to{opacity:1;transform:none} }
+.log-time { color:var(--muted); flex-shrink:0; }
+.log-lv { flex-shrink:0; width:36px; }
+.log-lv.info { color:var(--accent); } .log-lv.ok { color:var(--green); } .log-lv.warn { color:var(--amber); } .log-lv.error { color:var(--red); }
+.log-msg { color:var(--text); flex:1; word-break:break-word; }
+
+/* ── FABRIC CANVAS ─────────────────────────────────────── */
+#fabric-canvas {
+  width:100%; height:440px; position:relative;
+  background:var(--bg3); border:1px solid var(--border); border-radius:7px;
+  overflow:hidden; cursor:crosshair;
+}
+#fabric-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.fabric-node {
+  position:absolute; transform:translate(-50%,-50%);
+  background:var(--bg2); border:1px solid var(--border2); border-radius:6px;
+  padding:7px 11px; cursor:move; user-select:none; font-size:10px;
+  min-width:100px; text-align:center; z-index:10;
+  transition: box-shadow .2s, border-color .2s;
+}
+.fabric-node:hover { box-shadow:0 0 16px rgba(79,142,247,0.25); border-color:var(--accent); }
+.fabric-node.running { border-color:var(--green); box-shadow:0 0 14px rgba(16,208,132,0.18); }
+.fabric-node.error   { border-color:var(--red);   box-shadow:0 0 14px rgba(239,68,68,0.18); }
+.fabric-node.pending { border-color:var(--amber);  box-shadow:0 0 14px rgba(245,158,11,0.18); }
+.fabric-node.selected { border-color:var(--accent); box-shadow:0 0 20px rgba(79,142,247,0.3); }
+.node-type { font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+.node-name { font-family:var(--disp); font-size:11px; font-weight:600; color:var(--text); }
+.node-vc   { font-size:8px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px; }
+.status-badge { font-size:8px; margin-top:3px; padding:1px 6px; border-radius:100px; display:inline-block; }
+.status-badge.running { background:rgba(16,208,132,0.12); color:var(--green); }
+.status-badge.error   { background:rgba(239,68,68,0.12);  color:var(--red); }
+.status-badge.pending { background:rgba(245,158,11,0.12); color:var(--amber); }
+.status-badge.idle    { background:rgba(107,114,128,0.1);  color:var(--muted); }
+.edge-path { fill:none; stroke:rgba(79,142,247,0.2); stroke-width:1.5; stroke-dasharray:6 4; animation:dash 2.5s linear infinite; }
+.edge-path.hot { stroke:rgba(16,208,132,0.45); stroke-width:2; animation:dash 1s linear infinite; }
+@keyframes dash { to { stroke-dashoffset:-20; } }
+#node-popup {
+  position:absolute; background:var(--bg2); border:1px solid var(--border2);
+  border-radius:7px; padding:11px; width:190px; display:none; z-index:200;
+  box-shadow:0 8px 32px rgba(0,0,0,0.55); font-size:10px;
+}
+.popup-title { font-family:var(--disp); font-size:12px; font-weight:700; color:var(--text); margin-bottom:7px; }
+.popup-row { display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.popup-key { color:var(--muted); } .popup-val { color:var(--cyan); }
+
+/* ── AI CHAT ────────────────────────────────────────────── */
+.chat-area {
+  display:flex; flex-direction:column; height:100%;
+  background:var(--bg); border:1px solid var(--border); border-radius:7px; overflow:hidden;
+}
+.chat-messages { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
+.chat-msg { padding:10px 13px; border-radius:8px; max-width:96%; font-size:11px; line-height:1.65; word-break:break-word; }
+.chat-msg.user { background:linear-gradient(135deg,var(--accent),var(--accent2)); align-self:flex-end; color:#000; }
+.chat-msg.ai { background:var(--bg3); border:1px solid var(--border); align-self:flex-start; color:var(--text); }
+.chat-msg.system { background:transparent; border:1px dashed var(--border); color:var(--muted); text-align:center; align-self:center; font-size:10px; }
+.chat-msg.streaming::after { content:'▊'; animation:blink .55s step-end infinite; color:var(--accent); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.chat-input-row { display:flex; gap:7px; padding:10px; border-top:1px solid var(--border); background:var(--bg2); }
+.chat-input {
+  flex:1; padding:9px 12px; background:var(--bg); border:1px solid var(--border2);
+  border-radius:6px; color:var(--text); font-family:var(--mono); font-size:11px;
+  outline:none; transition:border-color .2s;
+}
+.chat-input:focus { border-color:var(--accent); }
+.model-row { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--bg3); border-bottom:1px solid var(--border); font-size:10px; color:var(--muted); }
+.model-sel { flex:1; background:var(--bg); border:1px solid var(--border2); color:var(--text); font-family:var(--mono); font-size:10px; padding:4px 8px; border-radius:4px; outline:none; }
+.model-sel option { background:var(--bg2); }
+
+/* ── LEDGER ─────────────────────────────────────────────── */
+.ledger-entry {
+  padding:9px 12px; border-left:2px solid var(--accent); border-radius:0 5px 5px 0;
+  background:var(--bg3); font-size:10px; margin-bottom:6px; transition:all .2s; cursor:pointer;
+  animation:fadeUp .3s ease;
+}
+.ledger-entry:hover { border-left-color:var(--pink); transform:translateX(3px); }
+.ledger-hash { font-family:var(--mono); color:var(--amber); font-size:8.5px; word-break:break-all; }
+.ledger-ts { color:var(--muted); font-size:8px; }
+
+/* ── NODE CARDS ─────────────────────────────────────────── */
+.node-card {
+  padding:10px; background:var(--bg3); border:1px solid var(--border);
+  border-radius:6px; transition:all .25s; cursor:pointer;
+}
+.node-card:hover { border-color:var(--accent); }
+.node-card.self { border-color:var(--green); }
+.node-id-label { font-family:var(--mono); font-size:9px; color:var(--accent); margin-bottom:3px; }
+.vc-display { font-size:8px; color:var(--muted); background:var(--bg); padding:4px 7px; border-radius:3px; margin-top:4px; word-break:break-all; }
+
+/* ── PIPELINE ─────────────────────────────────────────────── */
+.pipeline { display:flex; align-items:center; overflow-x:auto; padding:14px 16px; background:var(--bg3); border:1px solid var(--border); border-radius:7px; gap:0; }
+.stage { flex-shrink:0; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; padding:9px 12px; min-width:110px; text-align:center; cursor:pointer; transition:all .2s; position:relative; }
+.stage:hover { border-color:var(--accent); }
+.stage.active-stage { border-color:var(--green); background:rgba(16,208,132,0.05); }
+.stage.done-stage   { border-color:rgba(79,142,247,0.25); opacity:.65; }
+.stage-name { font-family:var(--disp); font-size:10px; font-weight:600; margin-bottom:1px; }
+.stage-desc { font-size:8px; color:var(--muted); }
+.stage-prog { position:absolute; bottom:0; left:0; height:2px; border-radius:0 0 5px 5px; background:var(--green); transition:width .4s ease; }
+.pipe-arr { flex-shrink:0; width:24px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; }
+
+/* ── IO PANEL ─────────────────────────────────────────────── */
+.transform-io { display:grid; grid-template-columns:1fr 36px 1fr; gap:0; align-items:start; }
+.io-panel { background:var(--bg); border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+.io-header { display:flex; align-items:center; gap:7px; padding:7px 11px; background:var(--bg2); border-bottom:1px solid var(--border); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-family:var(--disp); font-weight:600; }
+.io-body { padding:10px; font-family:var(--mono); font-size:10px; line-height:1.75; color:var(--text); white-space:pre; min-height:180px; overflow:auto; }
+.io-arrow { display:flex; align-items:center; justify-content:center; padding-top:55px; color:var(--accent); font-size:18px; }
+
+/* ── AGENTS ─────────────────────────────────────────────── */
+.agent-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; }
+.agent-card { background:var(--bg2); border:1px solid var(--border); border-radius:7px; padding:14px; cursor:pointer; transition:all .2s; position:relative; overflow:hidden; }
+.agent-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; transition:opacity .2s; opacity:0; }
+.agent-card:hover { border-color:var(--border2); }
+.agent-card:hover::before { opacity:1; }
+.agent-card.type-infer::before  { background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+.agent-card.type-tf::before     { background:linear-gradient(90deg,var(--green),var(--cyan)); }
+.agent-card.type-compose::before{ background:linear-gradient(90deg,var(--amber),var(--pink)); }
+.agent-card.type-mon::before    { background:linear-gradient(90deg,var(--cyan),var(--accent)); }
+.agent-header { display:flex; align-items:flex-start; gap:9px; margin-bottom:9px; }
+.agent-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.agent-name { font-family:var(--disp); font-size:12px; font-weight:700; color:var(--text); }
+.agent-role { font-size:9px; color:var(--muted); margin-top:1px; }
+.mini-bar-row { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+.mini-bar-lbl { font-size:8.5px; color:var(--muted); width:46px; flex-shrink:0; }
+.mini-bar-track { flex:1; height:3px; background:rgba(255,255,255,0.05); border-radius:100px; overflow:hidden; }
+.mini-bar-fill { height:100%; border-radius:100px; transition:width 1.2s ease; }
+.mini-bar-val { font-size:8.5px; color:var(--muted); width:26px; text-align:right; }
+.agent-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+.tag { font-size:8px; padding:1px 7px; border-radius:100px; border:1px solid; letter-spacing:.04em; }
+
+/* ── CAUSAL CHAIN ─────────────────────────────────────────── */
+.causal-item { display:flex; gap:9px; margin-bottom:10px; position:relative; }
+.causal-item::before { content:''; position:absolute; left:8px; top:20px; bottom:-10px; width:1px; background:var(--border); }
+.causal-item:last-child::before { display:none; }
+.causal-dot { width:17px; height:17px; border-radius:50%; border:1px solid; display:flex; align-items:center; justify-content:center; font-size:7px; flex-shrink:0; margin-top:1px; }
+.causal-event { font-size:10px; color:var(--text); line-height:1.4; }
+.causal-meta  { font-size:8.5px; color:var(--muted); margin-top:2px; }
+
+/* ── STATE TABLE ─────────────────────────────────────────── */
+.state-table { width:100%; border-collapse:collapse; font-size:9.5px; }
+.state-table th { text-align:left; padding:4px 7px; color:var(--muted); border-bottom:1px solid var(--border); font-weight:400; letter-spacing:.04em; font-family:var(--disp); font-size:8px; text-transform:uppercase; }
+.state-table td { padding:5px 7px; border-bottom:1px solid rgba(255,255,255,0.025); font-family:var(--mono); }
+.state-table tr:last-child td { border-bottom:none; }
+.sv { color:var(--cyan); } .st { color:var(--muted); font-size:8px; }
+
+/* ── METRICS ─────────────────────────────────────────────── */
+.metric-bar { margin: 3px 0 10px; }
+.metric-bar-header { display:flex; justify-content:space-between; margin-bottom:4px; font-size:9.5px; color:var(--muted); }
+.metric-track { height:4px; background:rgba(255,255,255,0.05); border-radius:100px; overflow:hidden; }
+.metric-fill { height:100%; border-radius:100px; transition:width 1s ease; }
+.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:5px 0; }
+.toggle-label { font-size:10px; color:var(--text); }
+.toggle { position:relative; width:30px; height:16px; cursor:pointer; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; inset:0; background:rgba(255,255,255,0.07); border-radius:100px; border:1px solid var(--border2); transition:background .2s; }
+.toggle-slider::before { content:''; position:absolute; width:10px; height:10px; left:2px; top:2px; border-radius:50%; background:var(--muted); transition:transform .2s, background .2s; }
+.toggle input:checked + .toggle-slider { background:rgba(79,142,247,0.22); border-color:rgba(79,142,247,0.5); }
+.toggle input:checked + .toggle-slider::before { transform:translateX(14px); background:var(--accent); }
+
+/* ── RULES ───────────────────────────────────────────────── */
+.rules-list { display:flex; flex-direction:column; gap:5px; }
+.rule-item { display:flex; align-items:flex-start; gap:9px; padding:7px 9px; background:var(--bg); border:1px solid var(--border); border-radius:5px; font-size:10px; }
+.rule-num { font-family:var(--disp); font-size:8.5px; font-weight:700; color:var(--accent); flex-shrink:0; width:16px; }
+.rule-text { color:var(--text); line-height:1.5; }
+.rule-tag { font-size:8px; color:var(--muted); margin-top:2px; }
+
+/* ── TABS ─────────────────────────────────────────────────── */
+.tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:14px; }
+.tab { padding:6px 14px; font-size:10px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s,border-color .15s; font-family:var(--disp); font-weight:600; letter-spacing:.04em; user-select:none; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── CODE BLOCK ──────────────────────────────────────────── */
+.code-block { background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:11px; font-family:var(--mono); font-size:10px; line-height:1.8; overflow:auto; white-space:pre; }
+.kw  { color:var(--accent2); } .fn  { color:var(--accent); }
+.str { color:var(--green); }   .cmt { color:var(--muted); }
+.num { color:var(--amber); }   .typ { color:var(--cyan); }
+
+/* ── HEATMAP ──────────────────────────────────────────────── */
+.heatmap { display:grid; grid-template-columns:repeat(24,1fr); gap:2px; }
+.heat-cell { aspect-ratio:1; border-radius:2px; cursor:pointer; transition:opacity .2s; }
+.heat-cell:hover { opacity:.7; outline:1px solid rgba(255,255,255,0.25); }
+
+/* ── RIGHT PANEL ──────────────────────────────────────────── */
+.right-panel {
+  border-left:1px solid var(--border);
+  background:var(--bg2);
+  overflow-y:auto; padding:14px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.inspector-title { font-family:var(--disp); font-size:9px; font-weight:600; letter-spacing:.12em; color:var(--muted); text-transform:uppercase; margin-bottom:7px; }
+
+/* ── COMPUTE TASK ─────────────────────────────────────────── */
+.compute-task { padding:9px; margin-bottom:7px; background:var(--bg); border:1px solid var(--border); border-radius:5px; animation:fadeUp .3s ease; }
+.prog-bar { height:3px; background:var(--bg3); border-radius:2px; margin-top:6px; overflow:hidden; }
+.prog-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .3s ease; }
+
+/* ── TIMELINE ──────────────────────────────────────────────── */
+.timeline-wrap { overflow-x:auto; padding:12px; display:flex; gap:0; align-items:center; }
+.tl-event { display:inline-flex; flex-direction:column; align-items:center; margin-right:20px; cursor:pointer; transition:transform .2s; flex-shrink:0; }
+.tl-event:hover { transform:translateY(-3px); }
+.tl-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--accent); background:var(--bg); position:relative; }
+.tl-dot::after { content:''; position:absolute; left:100%; top:50%; width:20px; height:1.5px; background:linear-gradient(90deg,var(--accent),transparent); transform:translateY(-50%); }
+.tl-label { font-size:8px; margin-top:6px; color:var(--muted); max-width:70px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tl-lt { font-size:7px; color:var(--amber); }
+
+/* ── MISC ──────────────────────────────────────────────────── */
+.hbar { height:1px; background:var(--border); margin:4px 0; }
+::-webkit-scrollbar { width:3px; height:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
+* { scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.1) transparent; }
+
+/* ── MODAL ─────────────────────────────────────────────────── */
+.modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000; align-items:center; justify-content:center; }
+.modal.active { display:flex; }
+.modal-box { background:var(--bg2); border:1px solid var(--border2); border-radius:10px; padding:22px; max-width:460px; width:92%; }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.modal-header h2 { font-family:var(--disp); font-size:15px; font-weight:700; color:var(--text); }
+.modal-close { background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer; }
+.igroup { margin-bottom:13px; }
+.igroup label { display:block; margin-bottom:6px; font-size:10px; color:var(--muted); }
+.igroup input,.igroup textarea,.igroup select { width:100%; padding:9px 11px; background:var(--bg); border:1px solid var(--border2); border-radius:5px; color:var(--text); font-family:var(--mono); font-size:10px; outline:none; }
+.igroup input:focus,.igroup textarea:focus,.igroup select:focus { border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <span class="topbar-brand">UDCSEF</span>
+  <span class="pill blue"><span class="dot"></span> Fabric v5.0</span>
+  <span class="pill green" id="ollama-pill"><span class="dot"></span> Ollama offline</span>
+  <span class="pill amber" id="p2p-pill"><span class="dot"></span> P2P init</span>
+  <span class="pill blue"><span class="dot"></span> Deterministic</span>
+  <span class="topbar-clock" id="topbar-clock">—</span>
+</header>
+
+<!-- LEFT NAV -->
+<nav class="left-panel">
+  <div class="panel-section">Fabric</div>
+  <div class="nav-item active" onclick="nav('fabric',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="3" cy="3" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="3" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="13" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 3h6M3 5l5 6M13 5l-5 6" stroke="currentColor" stroke-width="1"/></svg>
+    Execution Graph <span class="nav-badge">Live</span>
+  </div>
+  <div class="nav-item" onclick="nav('transform',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="5" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="4" width="5" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6 8h4M8 6l2 2-2 2" stroke="currentColor" stroke-width="1"/></svg>
+    Data Transforms
+  </div>
+  <div class="nav-item" onclick="nav('agents',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.2"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Intelligence Agents <span class="nav-badge" id="agent-badge">7</span>
+  </div>
+  <div class="nav-item" onclick="nav('network',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+    P2P Network <span class="nav-badge" id="peer-badge">0</span>
+  </div>
+  <div class="nav-item" onclick="nav('ai',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="10" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 14h6M8 12v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6" cy="7" r="1" fill="currentColor"/><circle cx="10" cy="7" r="1" fill="currentColor"/></svg>
+    AI Intelligence <span class="nav-badge" id="model-badge">—</span>
+  </div>
+  <div class="panel-section" style="margin-top:6px">Monitor</div>
+  <div class="nav-item" onclick="nav('telemetry',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M1 11l4-4 3 3 3-5 4 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Telemetry
+  </div>
+  <div class="nav-item" onclick="nav('causal',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Causal Log
+  </div>
+  <div class="panel-section" style="margin-top:6px">Config</div>
+  <div class="nav-item" onclick="nav('rules',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Determinism Rules
+  </div>
+</nav>
+
+<!-- MAIN VIEWS -->
+<main class="main" id="main">
+
+  <!-- VIEW: EXECUTION GRAPH -->
+  <section class="view active" id="view-fabric">
+    <div class="section-header">
+      <span class="section-title">Execution Graph</span>
+      <span class="section-sub">real-time causal state propagation · vector clocks · Lamport time</span>
+    </div>
+    <div class="grid-4">
+      <div class="card card-sm"><div class="stat-value" style="color:var(--green)" id="stat-nodes">12</div><div class="stat-label">Active Nodes</div><div class="stat-delta up" id="stat-nodes-d">—</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--accent)" id="stat-events">0</div><div class="stat-label">Total Events</div><div class="stat-delta up">↑ causal chain growing</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--cyan)" id="stat-msgs">0</div><div class="stat-label">Messages Sent</div><div class="stat-delta up" id="stat-msgs-d">—</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--amber)" id="stat-lamport">0</div><div class="stat-label">Lamport T</div><div class="stat-delta down">↓ deterministic</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="runFabric()">▶ Execute</button>
+      <button class="btn" onclick="pauseFabric()">⏸ Pause</button>
+      <button class="btn" onclick="resetFabric()">↺ Reset</button>
+      <button class="btn" onclick="addFabricNode()">＋ Node</button>
+      <button class="btn" onclick="removeFabricNode()">− Node</button>
+      <button class="btn" onclick="broadcastAll()">⇝ Broadcast</button>
+      <button class="btn danger" onclick="injectFault()">⚡ Fault</button>
+      <button class="btn" onclick="exportState()">↓ Export</button>
+      <span id="fabric-status" style="margin-left:auto;font-size:9px;color:var(--muted)">IDLE</span>
+    </div>
+    <div style="display:grid;grid-template-columns:180px 1fr;gap:11px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="card card-sm">
+          <div class="card-title">Source Node</div>
+          <select class="model-sel" id="src-node" style="margin-bottom:6px"></select>
+          <div class="card-title" style="margin-top:6px">Op Type</div>
+          <select class="model-sel" id="op-type">
+            <option value="compute">Compute</option>
+            <option value="update">Update State</option>
+            <option value="query">Query</option>
+            <option value="broadcast">Broadcast</option>
+          </select>
+          <div class="card-title" style="margin-top:6px">Payload</div>
+          <input class="chat-input" id="op-data" placeholder="payload..." style="padding:6px 8px;font-size:10px">
+          <div class="btn-row" style="margin-top:7px;gap:5px">
+            <button class="btn" onclick="execOp()" style="flex:1">Execute</button>
+            <button class="btn" onclick="sendMsg()" style="flex:1">Send</button>
+          </div>
+        </div>
+        <div class="card card-sm" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+          <div class="card-title">Message Queue</div>
+          <div class="log-box" id="msg-queue" style="flex:1;min-height:80px"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div id="fabric-canvas">
+          <svg id="fabric-svg"></svg>
+          <div id="node-popup">
+            <div class="popup-title" id="popup-name">—</div>
+            <div class="popup-row"><span class="popup-key">state</span><span class="popup-val" id="popup-state">—</span></div>
+            <div class="popup-row"><span class="popup-key">events</span><span class="popup-val" id="popup-events">—</span></div>
+            <div class="popup-row"><span class="popup-key">vc</span><span class="popup-val" id="popup-vc" style="font-size:8px">—</span></div>
+            <div class="popup-row"><span class="popup-key">lamport</span><span class="popup-val" id="popup-lt">—</span></div>
+            <div style="font-size:8px;color:var(--muted);margin-top:6px">click node to dismiss</div>
+          </div>
+        </div>
+        <div class="log-box" id="exec-log" style="height:100px;font-size:10px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: DATA TRANSFORMS -->
+  <section class="view" id="view-transform">
+    <div class="section-header"><span class="section-title">Data Transforms</span><span class="section-sub">deterministic schema evolution · DSL pipeline</span></div>
+    <div class="pipeline" id="pipeline-stages">
+      <div class="stage active-stage" onclick="selectStage(0)"><div class="stage-name">Ingest</div><div class="stage-desc">raw stream</div><div class="stage-prog" id="sp-0" style="width:100%"></div></div>
+      <div class="pipe-arr">→</div>
+      <div class="stage" onclick="selectStage(1)"><div class="stage-name">Validate</div><div class="stage-desc">schema check</div><div class="stage-prog" id="sp-1" style="width:0%"></div></div>
+      <div class="pipe-arr">→</div>
+      <div class="stage" onclick="selectStage(2)"><div class="stage-name">Normalize</div><div class="stage-desc">type coercion</div><div class="stage-prog" id="sp-2" style="width:0%"></div></div>
+      <div class="pipe-arr">→</div>
+      <div class="stage" onclick="selectStage(3)"><div class="stage-name">Enrich</div><div class="stage-desc">causal annotate</div><div class="stage-prog" id="sp-3" style="width:0%"></div></div>
+      <div class="pipe-arr">→</div>
+      <div class="stage" onclick="selectStage(4)"><div class="stage-name">Emit</div><div class="stage-desc">dispatch</div><div class="stage-prog" id="sp-4" style="width:0%"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="runTransform()">▶ Run Transform</button>
+      <button class="btn" onclick="loadSample()">⬇ Sample</button>
+      <span id="transform-status" style="margin-left:auto;font-size:9px;color:var(--muted)">ready</span>
+    </div>
+    <div class="transform-io">
+      <div class="io-panel">
+        <div class="io-header">Input Payload</div>
+        <div class="io-body" id="tx-input" contenteditable="true">{\n  "event_id": "evt_9f3a2bc1",\n  "source": "sensor://node-7",\n  "timestamp": 1743897600,\n  "schema_version": "2.1",\n  "payload": {\n    "temperature": "98.6F",\n    "pressure": "1013hPa",\n    "state": "ACTIVE",\n    "causal_parent": null\n  }\n}</div>
+      </div>
+      <div class="io-arrow">⇒</div>
+      <div class="io-panel">
+        <div class="io-header" style="color:var(--green)">Transformed Output</div>
+        <div class="io-body" id="tx-output" style="color:var(--muted)">awaiting transform...</div>
+      </div>
+    </div>
+    <div class="code-block"><span class="kw">transform</span> <span class="fn">NormalizeSensorEvent</span> <span class="typ">: SensorRawEvent → SensorEvent</span> {
+  <span class="cmt">// Deterministic field mapping with causal provenance</span>
+  <span class="fn">field</span> event_id   → <span class="fn">id</span>         <span class="str">:: uuid(stable)</span>
+  <span class="fn">field</span> timestamp  → <span class="fn">occurred_at</span> <span class="str">:: iso8601(utc)</span>
+  <span class="fn">field</span> source     → <span class="fn">origin</span>     <span class="str">:: uri(validated)</span>
+
+  <span class="cmt">// Unit coercion — causal annotation preserved</span>
+  <span class="fn">convert</span> payload.temperature  <span class="kw">from</span> <span class="typ">Fahrenheit</span> <span class="kw">to</span> <span class="typ">Celsius</span>
+  <span class="fn">convert</span> payload.pressure      <span class="kw">from</span> <span class="typ">hPa</span>        <span class="kw">to</span> <span class="typ">Pa</span>
+
+  <span class="cmt">// Derive causal lineage</span>
+  <span class="fn">derive</span> causal_chain <span class="kw">=</span> <span class="fn">trace</span>(causal_parent, depth: <span class="num">8</span>)
+
+  <span class="cmt">// Emit deterministic hash</span>
+  <span class="fn">emit</span> content_hash <span class="kw">=</span> <span class="fn">sha256</span>(id, occurred_at, origin, payload)
+}</div>
+  </section>
+
+  <!-- VIEW: AGENTS -->
+  <section class="view" id="view-agents">
+    <div class="section-header"><span class="section-title">Intelligence Agents</span><span class="section-sub">autonomous distributed reasoning units — Ollama-backed</span></div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="queryAgentAI()">🧠 Query via Ollama</button>
+      <select class="model-sel" id="agent-model-sel" style="width:180px"></select>
+      <input class="chat-input" id="agent-prompt" placeholder="Ask all agents..." style="flex:1;padding:5px 10px;font-size:10px">
+      <span id="agent-status" style="font-size:9px;color:var(--muted)">—</span>
+    </div>
+    <div id="agent-ai-response" style="display:none" class="card" style="padding:12px;font-size:11px;line-height:1.7"></div>
+    <div class="agent-grid" id="agent-grid"></div>
+  </section>
+
+  <!-- VIEW: P2P NETWORK -->
+  <section class="view" id="view-network">
+    <div class="section-header"><span class="section-title">P2P Network</span><span class="section-sub">PeerJS mesh · vector clock sync · distributed ledger</span></div>
+    <div class="grid-3">
+      <div class="card card-sm"><div class="stat-value" style="color:var(--accent)" id="net-nodes">1</div><div class="stat-label">Known Nodes</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--green)" id="net-peers">0</div><div class="stat-label">Connected Peers</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--amber)" id="net-blocks">0</div><div class="stat-label">Ledger Blocks</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">My Node</div>
+      <div style="font-size:10px;color:var(--muted)">ID: <span style="color:var(--cyan)" id="my-node-id">initializing...</span></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Vector Clock: <span style="color:var(--text)" id="my-vc">{}</span></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Lamport: <span style="color:var(--amber)" id="my-lt">0</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="connectPeer()">+ Connect Peer</button>
+      <button class="btn" onclick="broadcastState()">⇝ Sync All Peers</button>
+      <button class="btn" onclick="mineBlock()">⛏ Mine Block</button>
+      <button class="btn" onclick="submitComputeTask()">⚙ Distributed Task</button>
+    </div>
+    <div class="grid-2">
+      <div class="card" style="overflow:hidden">
+        <div class="card-title">Network Nodes</div>
+        <div id="net-node-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <div class="card" style="overflow:hidden">
+        <div class="card-title">Distributed Ledger</div>
+        <div id="ledger-entries" style="max-height:200px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card-title">Event Timeline (Lamport-ordered)</div>
+      <div class="card" style="padding:10px;overflow:hidden">
+        <div class="timeline-wrap" id="timeline-wrap"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card-title">Compute Tasks</div>
+      <div id="compute-tasks"></div>
+    </div>
+    <div>
+      <div class="card-title">Causal Graph (D3 Force)</div>
+      <div id="d3-graph-container" style="height:320px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;"></div>
+    </div>
+    <div class="log-box" id="net-console" style="height:120px"></div>
+  </section>
+
+  <!-- VIEW: AI INTELLIGENCE -->
+  <section class="view" id="view-ai">
+    <div class="section-header"><span class="section-title">AI Intelligence</span><span class="section-sub">Ollama · streaming chat · causal context injection</span></div>
+    <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div class="model-row">
+        <span style="color:var(--muted)">MODEL</span>
+        <select class="model-sel" id="ai-model-sel"></select>
+        <button class="btn" onclick="refreshModels()" style="padding:3px 10px">↻</button>
+        <span id="ai-ollama-status" style="font-size:9px;color:var(--muted)">connecting...</span>
+      </div>
+      <div class="chat-area" style="flex:1;min-height:0">
+        <div class="chat-messages" id="ai-chat-messages">
+          <div class="chat-msg system">Connected to UDCSEF AI Intelligence Core — backed by local Ollama</div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="ai-chat-input" placeholder="Ask the fabric intelligence..." onkeypress="if(event.key==='Enter')sendAIChat()">
+          <button class="btn primary" onclick="sendAIChat()" id="ai-send-btn">Send</button>
+          <button class="btn danger" onclick="abortAI()" id="ai-abort-btn" style="display:none">Abort</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: TELEMETRY -->
+  <section class="view" id="view-telemetry">
+    <div class="section-header"><span class="section-title">Telemetry</span><span class="section-sub">distributed observability · real-time metrics</span></div>
+    <div class="grid-4">
+      <div class="card card-sm"><div class="stat-value" style="color:var(--green)" id="tel-events">0</div><div class="stat-label">Total Events</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--red)" id="tel-faults">0</div><div class="stat-label">Faults Injected</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--cyan)">99.97%</div><div class="stat-label">Determinism</div></div>
+      <div class="card card-sm"><div class="stat-value" style="color:var(--amber)" id="tel-latency">1.4ms</div><div class="stat-label">P99 Latency</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Event Throughput — last 24h</div>
+      <canvas id="throughput-chart" height="80"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Execution Heatmap — 7d × 24h</div>
+      <div class="heatmap" id="heatmap"></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:8px;color:var(--muted);margin-top:5px">
+        <span>low</span>
+        <div style="width:55px;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(79,142,247,0.1),var(--accent))"></div>
+        <span>high</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: CAUSAL LOG -->
+  <section class="view" id="view-causal">
+    <div class="section-header"><span class="section-title">Causal Log</span><span class="section-sub">deterministic event lineage · SHA-256 hash chain</span></div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">State Snapshot</div>
+        <table class="state-table">
+          <thead><tr><th>Key</th><th>Value</th><th>Type</th></tr></thead>
+          <tbody id="state-matrix"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">Causal Chain</div>
+        <div id="causal-chain" style="max-height:240px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Global Event Log</div>
+      <div class="log-box" id="global-log" style="height:200px"></div>
+    </div>
+  </section>
+
+  <!-- VIEW: RULES -->
+  <section class="view" id="view-rules">
+    <div class="section-header"><span class="section-title">Determinism Rules</span><span class="section-sub">formal execution contracts · fabric invariants</span></div>
+    <div class="tabs">
+      <div class="tab active" onclick="selectTab(this,'rules-core')">Core</div>
+      <div class="tab" onclick="selectTab(this,'rules-dist')">Distribution</div>
+      <div class="tab" onclick="selectTab(this,'rules-fault')">Fault Model</div>
+      <div class="tab" onclick="selectTab(this,'rules-compose')">Composition</div>
+    </div>
+    <div id="rules-core">
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">D1</div><div><div class="rule-text">Execution is fully deterministic given identical initial state and input sequence — no ambient state, no side-channel entropy.</div><div class="rule-tag">determinism · pure-computation</div></div></div>
+        <div class="rule-item"><div class="rule-num">D2</div><div><div class="rule-text">State transitions form a monotone lattice — values may only advance, never regress. Enables wait-free reads across distributed nodes.</div><div class="rule-tag">monotone · CRDT · wait-free</div></div></div>
+        <div class="rule-item"><div class="rule-num">D3</div><div><div class="rule-text">Causal ordering enforced via vector clocks — no message may be processed before its causal predecessors are committed.</div><div class="rule-tag">vector-clock · causal-consistency</div></div></div>
+        <div class="rule-item"><div class="rule-num">D4</div><div><div class="rule-text">All operations are idempotent under a content-addressed deduplication key derived from the causal parent hash.</div><div class="rule-tag">idempotency · content-hash · exactly-once</div></div></div>
+        <div class="rule-item"><div class="rule-num">D5</div><div><div class="rule-text">The execution graph is a DAG — cycles are rejected at compile time via topological sort. Mutual causation modeled as shared parent.</div><div class="rule-tag">DAG · topo-sort · compile-time</div></div></div>
+      </div>
+    </div>
+    <div id="rules-dist" style="display:none">
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">N1</div><div><div class="rule-text">Network partitions are first-class — agents must declare partition tolerance policy (AP or CP) before fabric assembly.</div><div class="rule-tag">CAP-theorem · partition-policy</div></div></div>
+        <div class="rule-item"><div class="rule-num">N2</div><div><div class="rule-text">Gossip protocol synchronizes global Lamport clock — maximum allowed skew is 2 message delays.</div><div class="rule-tag">gossip · lamport · clock-sync</div></div></div>
+        <div class="rule-item"><div class="rule-num">N3</div><div><div class="rule-text">Agents communicate via immutable message envelopes — no in-place mutation of in-flight events permitted.</div><div class="rule-tag">immutable · message-passing</div></div></div>
+      </div>
+    </div>
+    <div id="rules-fault" style="display:none">
+      <div class="rules-list">
+        <div class="rule-item"><div class="rule-num">F1</div><div><div class="rule-text">Byzantine fault tolerance achieved via BFT-SMaRt consensus for critical state transitions requiring 2f+1 agreement.</div><div class="rule-tag">BFT · consensus · 2f+1</div></div></div>
+        <div class="rule-item"><div class="rule-num">F2</div><div><div class="rule-text">Crash faults trigger automatic reroute through the next-best causal path as computed by PathPlanner during last heartbeat.</div><div class="rule-tag">crash-fault · reroute · heartbeat</div></div></div>
+        <div class="rule-item"><div class="rule-num">F3</div><div><div class="rule-text">Injected faults for testing must replay deterministically — fault seed stored in causal log for exact reproduction.</div><div class="rule-tag">fault-injection · reproducibility</div></div></div>
+      </div>
+    </div>
+    <div id="rules-compose" style="display:none">
+      <div class="code-block"><span class="kw">system</span> <span class="fn">DistributedIntelligence</span> {
+  <span class="fn">agents</span>: [
+    <span class="str">CausalInfer</span>  <span class="kw">@</span> <span class="num">3</span> replicas,
+    <span class="str">SchemaWeaver</span> <span class="kw">@</span> <span class="num">2</span> replicas,
+    <span class="str">OracleWatch</span>  <span class="kw">@</span> <span class="num">1</span> replica
+  ]
+  <span class="fn">wire</span> <span class="str">sensor-ingress</span> → <span class="str">SchemaWeaver</span> → <span class="str">CausalInfer</span> → <span class="str">OracleWatch</span> → <span class="str">output-bus</span>
+  <span class="kw">on_fault</span>: <span class="fn">retry</span>(max=<span class="num">3</span>) | <span class="fn">reroute</span> | <span class="fn">halt</span>
+  <span class="kw">guarantee</span>: <span class="fn">total_order</span>, <span class="fn">idempotent</span>, <span class="fn">reproducible</span>
+}</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- RIGHT PANEL -->
+<aside class="right-panel">
+  <div>
+    <div class="inspector-title">System Health</div>
+    <div class="metric-bar"><div class="metric-bar-header"><span>CPU</span><span id="cpu-val">38%</span></div><div class="metric-track"><div class="metric-fill" id="cpu-bar" style="width:38%;background:var(--accent)"></div></div></div>
+    <div class="metric-bar"><div class="metric-bar-header"><span>Memory</span><span>2.4 GB</span></div><div class="metric-track"><div class="metric-fill" style="width:60%;background:var(--cyan)"></div></div></div>
+    <div class="metric-bar"><div class="metric-bar-header"><span>Net I/O</span><span id="net-val">1.2 GB/s</span></div><div class="metric-track"><div class="metric-fill" id="net-bar" style="width:48%;background:var(--green)"></div></div></div>
+    <div class="metric-bar"><div class="metric-bar-header"><span>Determinism</span><span style="color:var(--green)">99.97%</span></div><div class="metric-track"><div class="metric-fill" style="width:99.97%;background:var(--green)"></div></div></div>
+  </div>
+  <div>
+    <div class="inspector-title">Fabric Nodes</div>
+    <div id="right-node-list" style="display:flex;flex-direction:column;gap:4px"></div>
+  </div>
+  <div>
+    <div class="inspector-title">Causal Lineage</div>
+    <div style="font-size:9.5px;line-height:2">
+      <div style="color:var(--muted)">Head Hash</div>
+      <div style="color:var(--cyan);font-size:8.5px;word-break:break-all" id="r-head-hash">—</div>
+      <div style="color:var(--muted)">Lamport T</div>
+      <div style="color:var(--amber)" id="r-lamport">0</div>
+      <div style="color:var(--muted)">Global Events</div>
+      <div style="color:var(--text)" id="r-events">0</div>
+      <div style="color:var(--muted)">Ledger Blocks</div>
+      <div style="color:var(--text)" id="r-blocks">0</div>
+    </div>
+  </div>
+  <div>
+    <div class="inspector-title">Quick Config</div>
+    <div class="toggle-row"><span class="toggle-label">Auto-replay on fault</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+    <div class="toggle-row"><span class="toggle-label">Causal audit log</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+    <div class="toggle-row"><span class="toggle-label">Streaming AI</span><label class="toggle"><input type="checkbox" checked id="toggle-stream"><span class="toggle-slider"></span></label></div>
+    <div class="toggle-row"><span class="toggle-label">Speculative prefetch</span><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+  </div>
+</aside>
+
+</div><!-- .shell -->
+
+<!-- MODALS -->
+<div class="modal" id="modal-peer">
+  <div class="modal-box">
+    <div class="modal-header"><h2>Connect to Peer</h2><button class="modal-close" onclick="closeModal('modal-peer')">&times;</button></div>
+    <div class="igroup"><label>Remote Peer ID</label><input type="text" id="peer-id-input" placeholder="node_abc123..."></div>
+    <button class="btn primary" onclick="doConnectPeer()" style="width:100%">Connect</button>
+  </div>
+</div>
+<div class="modal" id="modal-task">
+  <div class="modal-box">
+    <div class="modal-header"><h2>Distributed Compute Task</h2><button class="modal-close" onclick="closeModal('modal-task')">&times;</button></div>
+    <div class="igroup"><label>Task Type</label><select id="task-type"><option value="ai-inference">AI Inference</option><option value="hash-compute">Hash Computation</option><option value="data-process">Data Processing</option><option value="consensus">Consensus Round</option></select></div>
+    <div class="igroup"><label>Task Data (JSON)</label><textarea id="task-data" rows="4" placeholder='{"prompt": "analyze the fabric state"}'></textarea></div>
+    <button class="btn primary" onclick="execDistributedTask()" style="width:100%">Execute Across Network</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════════════════════
+//  UDCSEF UNIFIED ENGINE
+//  Intelligence × Data × Action ≡ Time
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const OLLAMA = 'http://localhost:11434';
+
+// ── UTILITIES ─────────────────────────────────────────────────────────────────
+async function sha256hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function uid(prefix) { return (prefix||'') + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function ts() { return new Date().toISOString().replace('T',' ').slice(0,19); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('topbar-clock').textContent = now.toISOString().replace('T',' ').slice(0,19) + ' UTC';
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ── VECTOR CLOCK ──────────────────────────────────────────────────────────────
+class VectorClock {
+  constructor(nodeId) { this.nodeId = nodeId; this.clock = { [nodeId]: 0 }; }
+  increment() { this.clock[this.nodeId] = (this.clock[this.nodeId]||0)+1; return this.copy(); }
+  merge(other) {
+    const all = new Set([...Object.keys(this.clock), ...Object.keys(other)]);
+    all.forEach(n => { this.clock[n] = Math.max(this.clock[n]||0, other[n]||0); });
+    this.clock[this.nodeId]++;
+    return this.copy();
+  }
+  copy() { return Object.assign({},this.clock); }
+  toString() { return JSON.stringify(this.clock); }
+  happensBefore(other) {
+    let less = false;
+    for (const n of new Set([...Object.keys(this.clock),...Object.keys(other)])) {
+      if ((this.clock[n]||0) > (other[n]||0)) return false;
+      if ((this.clock[n]||0) < (other[n]||0)) less = true;
+    }
+    return less;
+  }
+  resize(size) { /* compat */ }
+}
+
+// ── LAMPORT CLOCK ─────────────────────────────────────────────────────────────
+class LamportClock {
+  constructor() { this.t = 0; }
+  tick() { return ++this.t; }
+  update(r) { this.t = Math.max(this.t,r)+1; return this.t; }
+  get() { return this.t; }
+}
+
+// ── DISTRIBUTED NODE ──────────────────────────────────────────────────────────
+class FabricNode {
+  constructor(id, totalNodes) {
+    this.id = id;
+    this.vectorClock = new VectorClock(id);
+    this.lamportClock = new LamportClock();
+    this.state = {};
+    this.eventLog = [];
+    this.messageQueue = [];
+    this.totalNodes = totalNodes;
+  }
+  executeOperation(type, data) {
+    const vc = this.vectorClock.increment();
+    const lt = this.lamportClock.tick();
+    const event = { id: uid('ev_'), nodeId: this.id, type, data, vc, lt, timestamp: Date.now() };
+    this.eventLog.push(event);
+    switch(type) {
+      case 'compute':   this.state.lastCompute = data; this.state.computeCount = (this.state.computeCount||0)+1; break;
+      case 'update':    Object.assign(this.state, typeof data==='string'?{value:data}:data); break;
+      case 'query':     this.state.lastQuery = data; break;
+      case 'broadcast': this.state.lastBroadcast = data; break;
+    }
+    return event;
+  }
+  receiveMessage(msg) {
+    this.vectorClock.merge(msg.vc || msg.vectorClock?.clock || msg.vectorClock || {});
+    if (msg.lt) this.lamportClock.update(msg.lt);
+    this.messageQueue.push(msg);
+    const event = { id: uid('rc_'), nodeId: this.id, type:'receive', data: msg, vc: this.vectorClock.copy(), lt: this.lamportClock.get(), timestamp: Date.now() };
+    this.eventLog.push(event);
+    return event;
+  }
+}
+
+// ── CAUSAL EVENT ──────────────────────────────────────────────────────────────
+class CausalEvent {
+  constructor(nodeId, type, data, vc, lt, causedBy) {
+    this.id = uid('evt_');
+    this.nodeId = nodeId; this.type = type; this.data = data;
+    this.vc = vc; this.lt = lt;
+    this.causedBy = causedBy || [];
+    this.timestamp = Date.now(); this.hash = null;
+  }
+  async computeHash() {
+    const raw = JSON.stringify({id:this.id,nodeId:this.nodeId,type:this.type,vc:this.vc,lt:this.lt,causedBy:this.causedBy,ts:this.timestamp});
+    this.hash = await sha256hex(raw);
+    return this.hash;
+  }
+}
+
+// ── LEDGER BLOCK ─────────────────────────────────────────────────────────────
+class LedgerBlock {
+  constructor(index, events, prevHash) {
+    this.index = index; this.events = events; this.prevHash = prevHash||'0';
+    this.timestamp = Date.now(); this.nonce = 0; this.hash = null;
+  }
+  async computeHash() {
+    const raw = JSON.stringify({index:this.index,evts:this.events.map(e=>e.hash),prevHash:this.prevHash,ts:this.timestamp,nonce:this.nonce});
+    this.hash = await sha256hex(raw);
+    return this.hash;
+  }
+  async mine(diff) {
+    diff = diff||2; const pfx = '0'.repeat(diff);
+    while(true) {
+      await this.computeHash();
+      if (this.hash.startsWith(pfx)) break;
+      this.nonce++;
+      if (this.nonce%500===0) await new Promise(r=>setTimeout(r,0));
+    }
+    return this.hash;
+  }
+}
+
+// ── FABRIC STATE MACHINE ──────────────────────────────────────────────────────
+const F = {
+  // Distributed nodes
+  myId: uid('node_'),
+  vc: null,
+  lc: new LamportClock(),
+  events: [],
+  ledger: [],
+  pending: [],
+  nodes: new Map(),
+  peers: new Map(),
+  peer: null,
+  computeTasks: new Map(),
+  graphData: { nodes:[], links:[] },
+  globalHash: null,
+  faultCount: 0,
+
+  // Fabric canvas nodes
+  fabricNodes: [],
+  fabricEdges: [],
+  fabricRunning: false,
+  fabricInterval: null,
+  selectedNode: null,
+
+  // Models
+  models: [],
+  ollamaOnline: false,
+
+  // AI streaming
+  aiAbort: null,
+  chatHistory: [],
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init() {
+  F.vc = new VectorClock(F.myId);
+  F.nodes.set(F.myId, { id:F.myId, vc:F.vc.copy(), lt:0, status:'active', isSelf:true });
+  document.getElementById('my-node-id').textContent = F.myId;
+  initFabricGraph();
+  initP2P();
+  await createGenesisBlock();
+  await refreshModels();
+  buildAgentGrid();
+  renderFabricCanvas();
+  updateAllUI();
+  initTelemetry();
+  buildStateMatrix();
+  buildCausalChain();
+  netLog('info','UDCSEF fabric initialized — deterministic mode active');
+  netLog('info','My node ID: ' + F.myId);
+
+  // Simulate some genesis events
+  setTimeout(async()=>{ await createFabricEvent('SYSTEM_INIT',{version:'5.0'}); }, 800);
+  setTimeout(async()=>{ await createFabricEvent('USER_ACTION',{action:'fabric_ready'}); }, 1500);
+}
+
+// ── GENESIS BLOCK ─────────────────────────────────────────────────────────────
+async function createGenesisBlock() {
+  const evt = new CausalEvent(F.myId,'GENESIS',{message:'UDCSEF Genesis'},F.vc.increment(),F.lc.tick());
+  await evt.computeHash();
+  F.events.push(evt);
+  F.globalHash = evt.hash;
+  const block = new LedgerBlock(0,[evt],'0');
+  await block.mine(2);
+  F.ledger.push(block);
+  addToD3Graph(evt);
+  netLog('ok','Genesis block mined: ' + block.hash.slice(0,20)+'...');
+}
+
+// ── CREATE FABRIC EVENT ───────────────────────────────────────────────────────
+async function createFabricEvent(type, data, causedBy) {
+  const vc = F.vc.increment();
+  const lt = F.lc.tick();
+  const evt = new CausalEvent(F.myId, type, data, vc, lt, causedBy||[]);
+  await evt.computeHash();
+  F.events.push(evt);
+  F.globalHash = await sha256hex((F.globalHash||'0') + evt.hash);
+  addToD3Graph(evt);
+  F.pending.push(evt);
+  if (F.pending.length >= 5) await mineBlock();
+  broadcastPeerEvent(evt);
+  updateAllUI();
+  return evt;
+}
+
+// ── MINE BLOCK ────────────────────────────────────────────────────────────────
+async function mineBlock() {
+  if (F.pending.length === 0) return;
+  const prev = F.ledger[F.ledger.length-1];
+  const block = new LedgerBlock(prev.index+1, F.pending.slice(), prev.hash);
+  await block.mine(2);
+  F.ledger.push(block);
+  F.pending = [];
+  netLog('ok',`Block ${block.index} mined: ${block.hash.slice(0,16)}...`);
+  updateAllUI();
+}
+
+// ── P2P ───────────────────────────────────────────────────────────────────────
+function initP2P() {
+  try {
+    F.peer = new Peer(F.myId, { debug: 0 });
+    F.peer.on('open', id => {
+      document.getElementById('p2p-pill').innerHTML = '<span class="dot"></span> P2P: ' + id.slice(0,12);
+      document.getElementById('p2p-pill').className = 'pill green';
+      netLog('ok','P2P open: ' + id);
+    });
+    F.peer.on('connection', conn => handlePeerConn(conn));
+    F.peer.on('error', err => {
+      document.getElementById('p2p-pill').className = 'pill amber';
+      netLog('warn','P2P: ' + err.type);
+    });
+  } catch(e) { netLog('error','P2P init failed'); }
+}
+
+function handlePeerConn(conn) {
+  conn.on('open', () => {
+    F.peers.set(conn.peer, conn);
+    netLog('info','Peer connected: ' + conn.peer);
+    conn.send({ type:'SYNC_REQUEST', nodeId:F.myId, vc:F.vc.copy(), lt:F.lc.get(), events:F.events.slice(-50) });
+    document.getElementById('peer-badge').textContent = F.peers.size;
+    updateAllUI();
+  });
+  conn.on('data', msg => handlePeerMsg(conn.peer, msg));
+  conn.on('close', () => {
+    F.peers.delete(conn.peer);
+    F.nodes.delete(conn.peer);
+    document.getElementById('peer-badge').textContent = F.peers.size;
+    netLog('warn','Peer left: ' + conn.peer);
+    updateAllUI();
+  });
+}
+
+function handlePeerMsg(from, msg) {
+  switch(msg.type) {
+    case 'SYNC_REQUEST':   handleSyncReq(from, msg); break;
+    case 'SYNC_RESPONSE':  handleSyncResp(from, msg); break;
+    case 'EVENT':          handleRemoteEvent(from, msg); break;
+    case 'COMPUTE_TASK':   handleComputeTask(from, msg); break;
+    case 'COMPUTE_RESULT': handleComputeResult(from, msg); break;
+  }
+}
+
+function handleSyncReq(from, msg) {
+  F.nodes.set(from, { id:from, vc:msg.vc, lt:msg.lt, status:'active' });
+  F.vc.merge(msg.vc);
+  if (msg.lt) F.lc.update(msg.lt);
+  const conn = F.peers.get(from);
+  if (conn) conn.send({ type:'SYNC_RESPONSE', nodeId:F.myId, vc:F.vc.copy(), lt:F.lc.get(), events:F.events, ledger:F.ledger });
+  (msg.events||[]).forEach(e => { if (!F.events.find(x=>x.id===e.id)) { F.events.push(e); addToD3Graph(e); } });
+  updateAllUI();
+}
+
+function handleSyncResp(from, msg) {
+  F.nodes.set(from, { id:from, vc:msg.vc, lt:msg.lt, status:'active' });
+  F.vc.merge(msg.vc);
+  if (msg.lt) F.lc.update(msg.lt);
+  (msg.events||[]).forEach(e => { if (!F.events.find(x=>x.id===e.id)) { F.events.push(e); addToD3Graph(e); } });
+  updateAllUI();
+}
+
+function handleRemoteEvent(from, msg) {
+  const evt = msg.event;
+  if (F.events.find(e=>e.id===evt.id)) return;
+  F.vc.merge(evt.vc||{});
+  if (evt.lt) F.lc.update(evt.lt);
+  F.events.push(evt);
+  addToD3Graph(evt);
+  F.nodes.set(from, { id:from, vc:evt.vc, lt:evt.lt, status:'active' });
+  netLog('info', 'Remote event from ' + from + ': ' + evt.type);
+  updateAllUI();
+}
+
+function broadcastPeerEvent(evt) {
+  F.peers.forEach(conn => conn.send({ type:'EVENT', event:evt }));
+}
+
+function handleComputeTask(from, msg) {
+  const task = msg.task;
+  netLog('info','Compute task from ' + from + ': ' + task.type);
+  executeLocalCompute(task).then(result => {
+    const conn = F.peers.get(from);
+    if (conn) conn.send({ type:'COMPUTE_RESULT', taskId:task.id, result, nodeId:F.myId });
+  });
+}
+
+function handleComputeResult(from, msg) {
+  const task = F.computeTasks.get(msg.taskId);
+  if (task) {
+    task.results.push({ nodeId:msg.nodeId, result:msg.result });
+    if (task.results.length >= task.expected) task.status = 'completed';
+    updateAllUI();
+  }
+}
+
+async function executeLocalCompute(task) {
+  switch(task.type) {
+    case 'ai-inference':
+      return await ollamaGenerate(F.models[0]||'', task.data.prompt || JSON.stringify(task.data));
+    case 'hash-compute':
+      return await sha256hex(JSON.stringify(task.data));
+    case 'data-process':
+      return { processed:true, data:task.data, nodeId:F.myId };
+    case 'consensus':
+      return { vote:true, nodeId:F.myId, timestamp:Date.now() };
+    default:
+      return { error:'unknown task type' };
+  }
+}
+
+// ── OLLAMA ────────────────────────────────────────────────────────────────────
+async function refreshModels() {
+  try {
+    const res = await fetch(OLLAMA+'/api/tags', { signal:AbortSignal.timeout(4000) });
+    if (!res.ok) throw new Error('bad');
+    const data = await res.json();
+    F.models = (data.models||[]).map(m=>m.name);
+    F.ollamaOnline = true;
+    document.getElementById('ollama-pill').innerHTML = '<span class="dot"></span> Ollama: '+F.models.length+' models';
+    document.getElementById('ollama-pill').className = 'pill green';
+    document.getElementById('ai-ollama-status').textContent = F.models.length+' model(s) available';
+    document.getElementById('model-badge').textContent = F.models[0]||'none';
+    populateModelSelects();
+    if (F.models.length) netLog('ok','Ollama online — '+F.models.length+' model(s)');
+  } catch(e) {
+    F.ollamaOnline = false;
+    document.getElementById('ollama-pill').innerHTML = '<span class="dot"></span> Ollama offline';
+    document.getElementById('ollama-pill').className = 'pill red';
+    document.getElementById('ai-ollama-status').textContent = 'Cannot reach Ollama — run: ollama serve';
+    netLog('warn','Ollama not reachable');
+  }
+}
+
+function populateModelSelects() {
+  const opts = F.models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  ['ai-model-sel','agent-model-sel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts || '<option value="">No models</option>';
+  });
+}
+
+async function ollamaGenerate(model, prompt, systemPrompt) {
+  const body = { model: model||F.models[0]||'', prompt, stream:false };
+  if (systemPrompt) body.system = systemPrompt;
+  const res = await fetch(OLLAMA+'/api/generate', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error('Ollama '+res.status);
+  const d = await res.json();
+  return d.response;
+}
+
+// ── AI CHAT (streaming) ───────────────────────────────────────────────────────
+async function sendAIChat() {
+  const input = document.getElementById('ai-chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (!F.ollamaOnline) { addChatMsg('system','Ollama is offline. Start it with: ollama serve'); return; }
+
+  const model = document.getElementById('ai-model-sel').value;
+  if (!model) { addChatMsg('system','No model selected'); return; }
+
+  addChatMsg('user', msg);
+  input.value = '';
+  document.getElementById('ai-send-btn').disabled = true;
+  document.getElementById('ai-abort-btn').style.display = '';
+
+  const sysMsg = `You are the AI intelligence core of UDCSEF — Universal Deterministic Causal State Execution Fabric.
+Current state: ${F.events.length} events, ${F.ledger.length} ledger blocks, ${F.nodes.size} known nodes.
+Global hash: ${F.globalHash||'none'}. Lamport T: ${F.lc.get()}.
+You understand distributed systems, vector clocks, causality, and deterministic execution.`;
+
+  const messages = [
+    { role:'system', content: sysMsg },
+    ...F.chatHistory.slice(-10),
+    { role:'user', content: msg }
+  ];
+
+  F.chatHistory.push({ role:'user', content:msg });
+
+  const msgEl = addChatMsg('ai', '', true);
+  F.aiAbort = new AbortController();
+  let full = '';
+
+  // Log as causal event
+  const qEvt = await createFabricEvent('AI_QUERY', { prompt: msg.slice(0,200) });
+
+  const streaming = document.getElementById('toggle-stream').checked;
+
+  try {
+    if (streaming) {
+      const res = await fetch(OLLAMA+'/api/chat', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        signal: F.aiAbort.signal,
+        body: JSON.stringify({ model, messages, stream:true, options:{temperature:0.7} })
+      });
+      if (!res.ok) throw new Error('Ollama '+res.status);
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      while(true) {
+        const {done,value} = await reader.read();
+        if (done) break;
+        for (const line of dec.decode(value,{stream:true}).split('\n')) {
+          if (!line.trim()) continue;
+          try { const j=JSON.parse(line); full += j?.message?.content||''; msgEl.textContent = full; } catch{}
+        }
+        msgEl.closest('.chat-messages').scrollTop = 9e9;
+      }
+    } else {
+      const res = await fetch(OLLAMA+'/api/chat', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        signal: F.aiAbort.signal,
+        body: JSON.stringify({ model, messages, stream:false })
+      });
+      if (!res.ok) throw new Error('Ollama '+res.status);
+      const d = await res.json();
+      full = d.message?.content || '';
+      msgEl.textContent = full;
+    }
+    msgEl.classList.remove('streaming');
+    F.chatHistory.push({ role:'assistant', content:full });
+    await createFabricEvent('AI_RESPONSE', { response: full.slice(0,400) }, [qEvt.id]);
+  } catch(e) {
+    if (e.name==='AbortError') { msgEl.textContent = (full||'') + '\n[aborted]'; }
+    else { msgEl.textContent = 'Error: '+e.message+'\n\nStart Ollama: ollama serve'; }
+    msgEl.classList.remove('streaming');
+  }
+
+  F.aiAbort = null;
+  document.getElementById('ai-send-btn').disabled = false;
+  document.getElementById('ai-abort-btn').style.display = 'none';
+}
+
+function abortAI() { if (F.aiAbort) F.aiAbort.abort(); }
+
+function addChatMsg(role, text, streaming) {
+  const msgs = document.getElementById('ai-chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role + (streaming?' streaming':'');
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = 9e9;
+  return div;
+}
+
+// Agent AI query
+async function queryAgentAI() {
+  const prompt = document.getElementById('agent-prompt').value.trim();
+  if (!prompt) return;
+  if (!F.ollamaOnline) { document.getElementById('agent-status').textContent = 'Ollama offline'; return; }
+  const model = document.getElementById('agent-model-sel').value;
+  document.getElementById('agent-status').textContent = 'querying...';
+  const respEl = document.getElementById('agent-ai-response');
+  respEl.style.display = 'block';
+  respEl.textContent = '...';
+  try {
+    const sysP = `You are a causal fabric analyst. State: ${F.events.length} events, ${F.nodes.size} nodes, Lamport T=${F.lc.get()}.`;
+    const resp = await ollamaGenerate(model, prompt, sysP);
+    respEl.textContent = resp;
+    document.getElementById('agent-status').textContent = 'done';
+  } catch(e) {
+    respEl.textContent = 'Error: '+e.message;
+    document.getElementById('agent-status').textContent = 'error';
+  }
+}
+
+// ── FABRIC CANVAS ─────────────────────────────────────────────────────────────
+const FABRIC_NODES_DEF = [
+  { id:'n1',  name:'IngestionGate', type:'INPUT',     x:.11, y:.15, state:'running', events:18420, latency:'0.8ms' },
+  { id:'n2',  name:'SchemaBridge',  type:'TRANSFORM', x:.33, y:.11, state:'running', events:18200, latency:'1.1ms' },
+  { id:'n3',  name:'CausalKernel',  type:'COMPUTE',   x:.54, y:.22, state:'running', events:17900, latency:'1.4ms' },
+  { id:'n4',  name:'StateOracle',   type:'STATE',     x:.77, y:.14, state:'running', events:17850, latency:'0.9ms' },
+  { id:'n5',  name:'FaultRouter',   type:'ROUTE',     x:.19, y:.44, state:'pending', events:9100,  latency:'12ms' },
+  { id:'n6',  name:'PathSolver',    type:'PLAN',      x:.43, y:.48, state:'running', events:8900,  latency:'1.6ms' },
+  { id:'n7',  name:'EntropyLock',   type:'GUARD',     x:.70, y:.42, state:'running', events:55000, latency:'0.2ms' },
+  { id:'n8',  name:'AgentBus',      type:'BUS',       x:.84, y:.55, state:'running', events:44200, latency:'0.5ms' },
+  { id:'n9',  name:'ComposeEngine', type:'COMPOSE',   x:.34, y:.70, state:'running', events:6200,  latency:'2.1ms' },
+  { id:'n10', name:'DataSink',      type:'OUTPUT',    x:.60, y:.78, state:'running', events:18100, latency:'0.7ms' },
+  { id:'n11', name:'AuditLedger',   type:'AUDIT',     x:.81, y:.80, state:'running', events:18420, latency:'0.3ms' },
+  { id:'n12', name:'ClockSync',     type:'SYNC',      x:.14, y:.76, state:'running', events:1024,  latency:'0.1ms' },
+];
+const FABRIC_EDGES_DEF = [
+  ['n1','n2'],['n1','n5'],['n2','n3'],['n2','n6'],['n3','n4'],['n3','n6'],
+  ['n4','n8'],['n5','n6'],['n6','n9'],['n7','n8'],['n7','n3'],['n8','n10'],
+  ['n8','n11'],['n9','n10'],['n10','n11'],['n12','n1'],['n12','n7'],['n6','n8'],
+];
+
+// Sync fabric nodes with distributed node network
+function initFabricGraph() {
+  F.fabricNodes = FABRIC_NODES_DEF.map(n => ({
+    ...n,
+    vc: new VectorClock(n.id),
+    lc: new LamportClock(),
+    eventLog: [],
+    messageQueue: [],
+  }));
+  F.fabricEdges = [...FABRIC_EDGES_DEF];
+  rebuildSourceNodeSelect();
+}
+
+function rebuildSourceNodeSelect() {
+  const sel = document.getElementById('src-node');
+  sel.innerHTML = F.fabricNodes.map(n=>`<option value="${n.id}">${n.name}</option>`).join('');
+}
+
+function renderFabricCanvas() {
+  const canvas = document.getElementById('fabric-canvas');
+  const svg = document.getElementById('fabric-svg');
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  canvas.querySelectorAll('.fabric-node').forEach(el=>el.remove());
+
+  // Edges
+  const paths = F.fabricEdges.map(([a,b]) => {
+    const na = F.fabricNodes.find(n=>n.id===a);
+    const nb = F.fabricNodes.find(n=>n.id===b);
+    if (!na||!nb) return '';
+    const x1=na.x*W, y1=na.y*H, x2=nb.x*W, y2=nb.y*H;
+    const mx=(x1+x2)/2, my=(y1+y2)/2 - 18;
+    const hot = F.fabricRunning && (na.state==='running'||nb.state==='running');
+    return `<path class="edge-path ${hot?'hot':''}" d="M${x1},${y1} Q${mx},${my} ${x2},${y2}" marker-end="url(#arrow)"/>`;
+  }).join('');
+
+  svg.innerHTML = `<defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="rgba(79,142,247,0.35)"/></marker></defs>${paths}`;
+
+  F.fabricNodes.forEach(node => {
+    const div = document.createElement('div');
+    div.className = `fabric-node ${node.state} ${F.selectedNode===node.id?'selected':''}`;
+    div.style.left = (node.x*W)+'px';
+    div.style.top  = (node.y*H)+'px';
+    div.innerHTML = `<div class="node-type">${node.type}</div><div class="node-name">${node.name}</div><div class="node-vc" title="${node.vc.toString()}">${node.vc.toString().slice(0,28)}</div><div class="status-badge ${node.state}">${node.state}</div>`;
+    div.onclick = e => { e.stopPropagation(); showNodePopup(node, e); };
+
+    // Drag
+    let dragging=false, ox=0, oy=0;
+    div.onmousedown = e => { if(e.target!==div&&e.target.parentElement!==div) return; dragging=true; ox=e.clientX-node.x*W; oy=e.clientY-node.y*H; e.preventDefault(); };
+    document.addEventListener('mousemove', e => { if(!dragging)return; node.x=Math.max(0.05,Math.min(0.95,(e.clientX-ox)/W)); node.y=Math.max(0.05,Math.min(0.95,(e.clientY-oy)/H)); renderFabricCanvas(); });
+    document.addEventListener('mouseup', ()=>{ dragging=false; });
+
+    canvas.appendChild(div);
+  });
+
+  // Update right panel node list
+  const rl = document.getElementById('right-node-list');
+  rl.innerHTML = F.fabricNodes.slice(0,8).map(n=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--border)">
+      <div class="dot" style="color:${n.state==='running'?'var(--green)':n.state==='pending'?'var(--amber)':n.state==='error'?'var(--red)':'var(--muted)'}"></div>
+      <span style="font-size:9.5px;color:var(--text)">${n.name}</span>
+      <span style="font-size:8.5px;color:var(--muted);margin-left:auto">${n.latency}</span>
+    </div>`).join('');
+}
+
+function showNodePopup(node, e) {
+  if (F.selectedNode === node.id) { hideNodePopup(); return; }
+  F.selectedNode = node.id;
+  const p = document.getElementById('node-popup');
+  p.style.display = 'block';
+  const canvas = document.getElementById('fabric-canvas');
+  p.style.left = Math.min(e.offsetX+10, canvas.offsetWidth-200)+'px';
+  p.style.top  = Math.min(e.offsetY+10, canvas.offsetHeight-150)+'px';
+  document.getElementById('popup-name').textContent = node.name;
+  document.getElementById('popup-state').textContent = node.state;
+  document.getElementById('popup-events').textContent = (node.events||0).toLocaleString();
+  document.getElementById('popup-vc').textContent = node.vc?.toString().slice(0,40)||'—';
+  document.getElementById('popup-lt').textContent = node.lc?.get()||'—';
+  renderFabricCanvas();
+}
+
+function hideNodePopup() {
+  F.selectedNode = null;
+  document.getElementById('node-popup').style.display = 'none';
+  renderFabricCanvas();
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const c = document.getElementById('fabric-canvas');
+  if(c) c.addEventListener('click', hideNodePopup);
+});
+
+// Fabric controls
+let fabricLogT = 0;
+function fabricLog(level, msg) {
+  fabricLogT += Math.round(Math.random()*15+1);
+  const ms = String(fabricLogT%1000).padStart(3,'0');
+  const s  = String(Math.floor(fabricLogT/1000)).padStart(2,'0');
+  appendLog('exec-log', level, msg, `${s}:${ms}`);
+}
+
+function runFabric() {
+  if (F.fabricRunning) return;
+  F.fabricRunning = true;
+  document.getElementById('fabric-status').textContent = 'RUNNING — causal propagation active';
+  fabricLog('ok','Execution fabric started');
+  F.fabricNodes.forEach((n,i) => {
+    setTimeout(()=>{ if(n.state==='idle')n.state='running'; renderFabricCanvas(); fabricLog('ok',`${n.name} → running`); }, i*100);
+  });
+  F.fabricInterval = setInterval(()=>{
+    F.fabricNodes.forEach(n => {
+      if(n.state==='running') { n.vc.increment(); n.lc.tick(); n.events++; }
+    });
+    document.getElementById('stat-lamport').textContent = F.lc.tick();
+    document.getElementById('r-lamport').textContent = F.lc.get();
+    renderFabricCanvas();
+  }, 900);
+}
+
+function pauseFabric() {
+  F.fabricRunning = false;
+  clearInterval(F.fabricInterval);
+  document.getElementById('fabric-status').textContent = 'PAUSED';
+  fabricLog('warn','Fabric paused');
+  renderFabricCanvas();
+}
+
+function resetFabric() {
+  pauseFabric();
+  F.fabricNodes.forEach(n => { n.state = (n.id==='n12'?'running':'idle'); });
+  F.selectedNode = null;
+  fabricLogT = 0;
+  document.getElementById('exec-log').innerHTML = '';
+  document.getElementById('fabric-status').textContent = 'IDLE';
+  renderFabricCanvas();
+}
+
+function addFabricNode() {
+  const types = ['COMPUTE','TRANSFORM','ROUTE','STATE','GUARD'];
+  const names = ['NewNode','AsyncProc','DataMux','CacheTier','Replicator','MuxGate'];
+  const newN = {
+    id: uid('fx'),
+    name: names[Math.floor(Math.random()*names.length)],
+    type: types[Math.floor(Math.random()*types.length)],
+    x: .2+Math.random()*.6, y: .2+Math.random()*.6,
+    state: 'idle', events: 0, latency: '—',
+    vc: new VectorClock(uid('fx')), lc: new LamportClock(), eventLog:[], messageQueue:[]
+  };
+  F.fabricNodes.push(newN);
+  document.getElementById('stat-nodes').textContent = F.fabricNodes.length;
+  fabricLog('info', `Node ${newN.name} added`);
+  rebuildSourceNodeSelect();
+  renderFabricCanvas();
+}
+
+function removeFabricNode() {
+  if (F.fabricNodes.length <= 2) { fabricLog('warn','Cannot remove last nodes'); return; }
+  const removed = F.fabricNodes.pop();
+  F.fabricEdges = F.fabricEdges.filter(([a,b]) => a!==removed.id && b!==removed.id);
+  document.getElementById('stat-nodes').textContent = F.fabricNodes.length;
+  fabricLog('warn', `Node ${removed.name} removed`);
+  rebuildSourceNodeSelect();
+  renderFabricCanvas();
+}
+
+function injectFault() {
+  const running = F.fabricNodes.filter(n=>n.state==='running');
+  if (!running.length) return;
+  const target = running[Math.floor(Math.random()*running.length)];
+  target.state = 'error';
+  F.faultCount++;
+  document.getElementById('tel-faults').textContent = F.faultCount;
+  fabricLog('error', `FAULT → ${target.name}: simulated crash`);
+  renderFabricCanvas();
+  setTimeout(()=>{
+    target.state='running';
+    fabricLog('ok', `Auto-heal: ${target.name} recovered`);
+    renderFabricCanvas();
+  }, 2500);
+}
+
+// Distributed ops on fabric nodes
+function execOp() {
+  const srcId = document.getElementById('src-node').value;
+  const node = F.fabricNodes.find(n=>n.id===srcId);
+  if (!node) return;
+  const type = document.getElementById('op-type').value;
+  const data = document.getElementById('op-data').value;
+  node.vc.increment();
+  node.lc.tick();
+  node.events++;
+  fabricLog('info', `[${node.name}] ${type}: ${data||'(empty)'}`);
+  createFabricEvent(type.toUpperCase(), { node:node.id, data });
+  renderFabricCanvas();
+  updateAllUI();
+}
+
+function sendMsg() {
+  const srcId = document.getElementById('src-node').value;
+  const data   = document.getElementById('op-data').value;
+  const src = F.fabricNodes.find(n=>n.id===srcId);
+  if (!src||F.fabricNodes.length<2) return;
+  src.vc.increment();
+  const available = F.fabricNodes.filter(n=>n.id!==srcId);
+  const tgt = available[Math.floor(Math.random()*available.length)];
+  const msg = { from:src.id, to:tgt.id, data, vc:src.vc.copy(), lt:src.lc.tick(), timestamp:Date.now() };
+  tgt.receiveMessage ? tgt.receiveMessage(msg) : (() => { tgt.vc.merge(msg.vc); tgt.lc.update(msg.lt); tgt.messageQueue.push(msg); })();
+  appendMsgQueue(msg);
+  fabricLog('info', `MSG: ${src.name} → ${tgt.name}: ${data||'(empty)'}`);
+  createFabricEvent('MESSAGE', { from:src.id, to:tgt.id, data });
+  renderFabricCanvas();
+}
+
+function broadcastAll() {
+  const srcId = document.getElementById('src-node').value;
+  const data   = document.getElementById('op-data').value;
+  const src = F.fabricNodes.find(n=>n.id===srcId);
+  if (!src) return;
+  src.vc.increment();
+  F.fabricNodes.filter(n=>n.id!==srcId).forEach(tgt => {
+    const msg = { from:src.id, to:tgt.id, data, vc:src.vc.copy(), lt:src.lc.tick(), timestamp:Date.now() };
+    tgt.vc.merge(msg.vc); tgt.lc.update(msg.lt); tgt.messageQueue.push(msg);
+    appendMsgQueue(msg);
+  });
+  fabricLog('ok', `BROADCAST from ${src.name} to all nodes`);
+  createFabricEvent('BROADCAST', { from:src.id, data });
+  renderFabricCanvas();
+}
+
+function appendMsgQueue(msg) {
+  const q = document.getElementById('msg-queue');
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  const fn = F.fabricNodes.find(n=>n.id===msg.from)?.name || msg.from.slice(0,8);
+  const tn = F.fabricNodes.find(n=>n.id===msg.to)?.name   || msg.to.slice(0,8);
+  div.innerHTML = `<span class="log-time" style="color:var(--accent)">${fn}</span><span class="log-msg">→ ${tn}: ${esc(msg.data||'').slice(0,30)}</span>`;
+  q.appendChild(div);
+  q.scrollTop = 9e9;
+}
+
+// ── D3 FORCE GRAPH ────────────────────────────────────────────────────────────
+let d3Sim, d3Svg, d3Links, d3NodesG, d3Labels;
+
+function initD3Graph() {
+  const container = document.getElementById('d3-graph-container');
+  const W = container.clientWidth || 600, H = container.clientHeight || 320;
+  d3Svg = d3.select('#d3-graph-container').append('svg').attr('width','100%').attr('height','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  d3Svg.append('defs').append('marker').attr('id','d3arrow').attr('viewBox','-0 -5 10 10').attr('refX',18).attr('refY',0).attr('orient','auto').attr('markerWidth',5).attr('markerHeight',5).append('path').attr('d','M 0,-5 L 10,0 L 0,5').attr('fill','#00f5ff');
+  d3Links = d3Svg.append('g');
+  d3NodesG = d3Svg.append('g');
+  d3Labels = d3Svg.append('g');
+  d3Sim = d3.forceSimulation().force('link',d3.forceLink().id(d=>d.id).distance(70)).force('charge',d3.forceManyBody().strength(-180)).force('center',d3.forceCenter(W/2,H/2)).force('collision',d3.forceCollide().radius(25));
+}
+
+function addToD3Graph(evt) {
+  if (!d3Svg) return;
+  const node = { id:evt.id, type:evt.type, nodeId:evt.nodeId, lt:evt.lt||0, ts:evt.timestamp };
+  F.graphData.nodes.push(node);
+  (evt.causedBy||[]).forEach(pid => {
+    if (F.graphData.nodes.find(n=>n.id===pid)) {
+      F.graphData.links.push({ source:pid, target:evt.id, type:'causal' });
+    }
+  });
+  updateD3Graph();
+}
+
+function updateD3Graph() {
+  if (!d3Svg) return;
+  const links = d3Links.selectAll('line').data(F.graphData.links, d=>(d.source.id||d.source)+'-'+(d.target.id||d.target));
+  links.enter().append('line').attr('stroke',d=>d.type==='causal'?'#00f5ff':'#ff00ff').attr('stroke-width',d=>d.type==='causal'?1.5:0.8).attr('stroke-dasharray',d=>d.type==='temporal'?'4,4':'none').attr('stroke-opacity',0.5).attr('marker-end','url(#d3arrow)');
+  links.exit().remove();
+  const nodes = d3NodesG.selectAll('circle').data(F.graphData.nodes, d=>d.id);
+  const enter = nodes.enter().append('circle').attr('r',9).attr('fill',d=>getD3Color(d.type)).attr('stroke','rgba(255,255,255,0.3)').attr('stroke-width',1.5).attr('cursor','pointer');
+  enter.call(d3.drag().on('start',(e,d)=>{ if(!e.active)d3Sim.alphaTarget(.3).restart(); d.fx=d.x;d.fy=d.y; }).on('drag',(e,d)=>{ d.fx=e.x;d.fy=e.y; }).on('end',(e,d)=>{ if(!e.active)d3Sim.alphaTarget(0); d.fx=null;d.fy=null; }));
+  nodes.exit().remove();
+  const labels = d3Labels.selectAll('text').data(F.graphData.nodes, d=>d.id);
+  labels.enter().append('text').attr('font-size','7px').attr('fill','rgba(200,200,200,0.5)').attr('text-anchor','middle').attr('dy',20).text(d=>d.type.slice(0,8));
+  labels.exit().remove();
+  d3Sim.nodes(F.graphData.nodes);
+  d3Sim.force('link').links(F.graphData.links);
+  d3Sim.alpha(.3).restart();
+  d3Sim.on('tick',()=>{
+    d3Links.selectAll('line').attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    d3NodesG.selectAll('circle').attr('cx',d=>d.x).attr('cy',d=>d.y);
+    d3Labels.selectAll('text').attr('x',d=>d.x).attr('y',d=>d.y);
+  });
+}
+
+function getD3Color(type) {
+  const m = {GENESIS:'#ffd700',AI_QUERY:'#00f5ff',AI_RESPONSE:'#00ff88',COMPUTE:'#ff00ff',BROADCAST:'#ff8800',MESSAGE:'#4f8ef7',SYSTEM_INIT:'#10d084',USER_ACTION:'#ec4899'};
+  return m[type]||'#ffffff';
+}
+
+// ── AGENT GRID ────────────────────────────────────────────────────────────────
+const AGENTS = [
+  { name:'CausalInfer',   role:'Causal Inference Engine',     icon:'🧠', cls:'type-infer',   status:'running', bars:[{l:'accuracy',v:94},{l:'throughput',v:78},{l:'confidence',v:87}], tags:['bayesian','do-calculus','counterfactual'] },
+  { name:'SchemaWeaver',  role:'Adaptive Schema Transformer', icon:'⚡', cls:'type-tf',      status:'running', bars:[{l:'coverage',v:100},{l:'errors',v:2},{l:'latency',v:60}],  tags:['streaming','arrow IPC','versioned'] },
+  { name:'SysComposer',   role:'Autonomous Compositor',       icon:'🔗', cls:'type-compose', status:'busy',    bars:[{l:'systems',v:72},{l:'health',v:96},{l:'adapt',v:84}],     tags:['autonomous','self-healing','WASM'] },
+  { name:'OracleWatch',   role:'Distributed State Observer',  icon:'📡', cls:'type-mon',     status:'running', bars:[{l:'coverage',v:100},{l:'lag',v:15},{l:'alerts',v:10}],     tags:['eBPF','zero-copy','CRDT'] },
+  { name:'PathPlanner',   role:'Execution Path Optimizer',    icon:'🗺', cls:'type-infer',   status:'running', bars:[{l:'plans',v:88},{l:'optimal',v:73},{l:'cache',v:91}],      tags:['MCTS','DAG-aware','memoized'] },
+  { name:'EntropyGuard',  role:'Determinism Enforcer',        icon:'🌀', cls:'type-tf',      status:'running', bars:[{l:'entropy',v:3},{l:'seeded',v:100},{l:'replays',v:55}],   tags:['hash-chain','VRF','auditable'] },
+];
+
+function buildAgentGrid() {
+  const grid = document.getElementById('agent-grid');
+  grid.innerHTML = AGENTS.map(a => `
+    <div class="agent-card ${a.cls}" onclick="agentCardClick(this,'${a.name}')">
+      <div class="agent-header">
+        <div class="agent-icon" style="background:rgba(79,142,247,0.1)">${a.icon}</div>
+        <div><div class="agent-name">${a.name}</div><div class="agent-role">${a.role}</div></div>
+        <span class="pill ${a.status==='busy'?'amber':'green'}" style="margin-left:auto;font-size:8px"><span class="dot"></span> ${a.status}</span>
+      </div>
+      ${a.bars.map(b=>`
+        <div class="mini-bar-row">
+          <span class="mini-bar-lbl">${b.l}</span>
+          <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${b.v}%;background:var(--accent)"></div></div>
+          <span class="mini-bar-val">${b.v}%</span>
+        </div>`).join('')}
+      <div class="agent-tags">${a.tags.map(t=>`<span class="tag" style="color:var(--muted);border-color:var(--border2)">${t}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function agentCardClick(el, name) {
+  document.getElementById('agent-prompt').value = `Analyze the ${name} agent and its current performance in the fabric.`;
+}
+
+// ── TRANSFORM VIEW ────────────────────────────────────────────────────────────
+function loadSample() {
+  document.getElementById('tx-input').textContent = `{
+  "event_id": "evt_${Math.random().toString(16).slice(2,10)}",
+  "source": "sensor://node-${Math.floor(Math.random()*12)+1}",
+  "timestamp": ${Math.floor(Date.now()/1000)},
+  "schema_version": "2.1",
+  "payload": {
+    "temperature": "${(95+Math.random()*10).toFixed(1)}F",
+    "pressure": "${(1005+Math.random()*20).toFixed(0)}hPa",
+    "state": "ACTIVE",
+    "causal_parent": "0x${Math.random().toString(16).slice(2,10)}"
+  }
+}`;
+  document.getElementById('tx-output').textContent = 'awaiting transform...';
+  document.getElementById('tx-output').style.color = 'var(--muted)';
+  document.getElementById('transform-status').textContent = 'sample loaded';
+}
+
+function selectStage(i) {
+  document.querySelectorAll('.stage').forEach((s,idx) => s.classList.toggle('active-stage', idx===i));
+}
+
+function runTransform() {
+  const rawText = document.getElementById('tx-input').textContent || document.getElementById('tx-input').innerText;
+  document.getElementById('transform-status').textContent = 'processing...';
+  const stages = document.querySelectorAll('.stage');
+  stages.forEach((s,i)=>{ s.classList.remove('active-stage','done-stage'); document.getElementById('sp-'+i).style.width='0%'; });
+
+  function advance(idx) {
+    if (idx>=stages.length) { document.getElementById('transform-status').textContent='✓ complete'; return; }
+    stages.forEach((s,si) => { s.classList.toggle('active-stage',si===idx); if(si<idx)s.classList.add('done-stage'); });
+    let pct=0;
+    const it = setInterval(()=>{
+      pct = Math.min(pct+10,100);
+      document.getElementById('sp-'+idx).style.width=pct+'%';
+      if (pct>=100) { clearInterval(it); setTimeout(()=>advance(idx+1),120); }
+    }, 35);
+  }
+  advance(0);
+
+  setTimeout(async ()=>{
+    try {
+      const obj = JSON.parse(rawText);
+      const tF = parseFloat(obj.payload.temperature);
+      const tC = ((tF-32)*5/9).toFixed(2);
+      const pPa = (parseFloat(obj.payload.pressure)*100).toFixed(0);
+      const ch = await sha256hex(obj.event_id + obj.timestamp + obj.source + JSON.stringify(obj.payload));
+      const out = {
+        id: obj.event_id,
+        occurred_at: new Date(obj.timestamp*1000).toISOString(),
+        origin: obj.source,
+        schema: obj.schema_version,
+        payload: { temperature_celsius:parseFloat(tC), pressure_pa:parseInt(pPa), state:obj.payload.state, causal_chain:[obj.payload.causal_parent,obj.event_id].filter(Boolean) },
+        content_hash: '0x'+ch.slice(0,16),
+        deterministic: true,
+        processed_at: new Date().toISOString()
+      };
+      document.getElementById('tx-output').textContent = JSON.stringify(out,null,2);
+      document.getElementById('tx-output').style.color = 'var(--green)';
+      await createFabricEvent('DATA_TRANSFORM', { input:obj.event_id, hash:'0x'+ch.slice(0,8) });
+    } catch(e) {
+      document.getElementById('tx-output').textContent = '// Error: '+e.message;
+      document.getElementById('tx-output').style.color = 'var(--red)';
+    }
+  }, 1500);
+}
+
+// ── P2P ACTIONS ───────────────────────────────────────────────────────────────
+function connectPeer() { openModal('modal-peer'); }
+function doConnectPeer() {
+  const id = document.getElementById('peer-id-input').value.trim();
+  if (!id||!F.peer) return;
+  const conn = F.peer.connect(id);
+  handlePeerConn(conn);
+  closeModal('modal-peer');
+  netLog('info','Connecting to peer: '+id);
+}
+
+function broadcastState() {
+  F.peers.forEach(conn => conn.send({ type:'SYNC_REQUEST', nodeId:F.myId, vc:F.vc.copy(), lt:F.lc.get(), events:F.events.slice(-50) }));
+  netLog('info','Broadcasting state to all peers');
+}
+
+function submitComputeTask() { openModal('modal-task'); }
+async function execDistributedTask() {
+  const type = document.getElementById('task-type').value;
+  let data;
+  try { data=JSON.parse(document.getElementById('task-data').value||'{}'); } catch { data={input:document.getElementById('task-data').value}; }
+  closeModal('modal-task');
+
+  const taskId = uid('task_');
+  const task = { id:taskId, type, data, submittedBy:F.myId, timestamp:Date.now(), results:[], expected:F.peers.size+1, status:'running' };
+  F.computeTasks.set(taskId, task);
+
+  const localRes = await executeLocalCompute(task);
+  task.results.push({ nodeId:F.myId, result:localRes });
+  if (task.results.length>=task.expected) task.status='completed';
+
+  F.peers.forEach(conn => conn.send({ type:'COMPUTE_TASK', task }));
+  await createFabricEvent('COMPUTE', { taskId, type });
+  netLog('info', 'Distributed task submitted: '+taskId);
+  updateAllUI();
+}
+
+// ── TELEMETRY ─────────────────────────────────────────────────────────────────
+function initTelemetry() {
+  const canvas = document.getElementById('throughput-chart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.parentElement?.offsetWidth-28 || 500;
+  canvas.width = W; canvas.height = 80;
+
+  const data = Array.from({length:24},(_,h)=>1500+Math.random()*6000*Math.sin(Math.PI*h/12+0.5)**2);
+  const maxV = Math.max(...data);
+  const bW = W/24-2;
+  ctx.clearRect(0,0,W,80);
+  data.forEach((v,i)=>{
+    const bH = (v/maxV)*60;
+    ctx.fillStyle = i>=22||i<=6?'rgba(79,142,247,0.18)':'rgba(79,142,247,0.5)';
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(i*(W/24)+1,70-bH,bW,bH,2);
+    else ctx.rect(i*(W/24)+1,70-bH,bW,bH);
+    ctx.fill();
+  });
+  ctx.fillStyle='rgba(107,114,128,0.7)'; ctx.font='8px DM Mono,monospace';
+  [0,6,12,18,23].forEach(h=>ctx.fillText(h+'h',h*(W/24),80));
+
+  const hm = document.getElementById('heatmap');
+  hm.innerHTML = Array.from({length:24*7},()=>{
+    const v = Math.random();
+    return `<div class="heat-cell" style="background:rgba(79,142,247,${0.07+v*0.85})" title="${Math.round(v*8000)} events/h"></div>`;
+  }).join('');
+}
+
+// ── CAUSAL LOG & STATE ────────────────────────────────────────────────────────
+function buildStateMatrix() {
+  const tbody = document.getElementById('state-matrix');
+  const rows = [
+    ['fabric.mode', '"deterministic"', 'string'],
+    ['clock.lamport', F.lc.get(), 'uint64'],
+    ['clock.vector', F.vc.toString().slice(0,30)+'...', 'VectorClock'],
+    ['nodes.count', F.fabricNodes.length, 'int'],
+    ['events.total', F.events.length, 'int'],
+    ['ledger.blocks', F.ledger.length, 'int'],
+    ['global.hash', '0x'+(F.globalHash||'').slice(0,12)+'...', 'sha256'],
+  ];
+  tbody.innerHTML = rows.map(([k,v,t])=>`<tr><td>${k}</td><td class="sv">${esc(String(v))}</td><td class="st">${t}</td></tr>`).join('');
+}
+
+function buildCausalChain() {
+  const chain = document.getElementById('causal-chain');
+  const recent = F.events.slice(-8).reverse();
+  chain.innerHTML = recent.map((evt,i)=>`
+    <div class="causal-item">
+      <div class="causal-dot" style="border-color:${i===0?'var(--accent)':'var(--green)'};color:${i===0?'var(--accent)':'var(--green)'}">✓</div>
+      <div>
+        <div class="causal-event">${esc(evt.type)}: ${esc(JSON.stringify(evt.data).slice(0,60))}</div>
+        <div class="causal-meta">T=${evt.lt||'?'} · ${evt.nodeId?.slice(0,16)||'?'} · ${new Date(evt.timestamp||0).toLocaleTimeString()}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── LOG HELPERS ───────────────────────────────────────────────────────────────
+function appendLog(elId, level, msg, time) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  time = time || new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `<span class="log-time">${time}</span><span class="log-lv ${level}">${level.toUpperCase()}</span><span class="log-msg">${esc(msg)}</span>`;
+  el.appendChild(div);
+  el.scrollTop = 9e9;
+}
+
+function netLog(level, msg) {
+  appendLog('net-console', level, msg);
+  appendLog('global-log', level, msg);
+}
+
+// ── EXPORT STATE ──────────────────────────────────────────────────────────────
+function exportState() {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    myNodeId: F.myId,
+    globalHash: F.globalHash,
+    vectorClock: F.vc.copy(),
+    lamport: F.lc.get(),
+    events: F.events,
+    ledger: F.ledger,
+    nodes: Array.from(F.nodes.entries()),
+    fabricNodes: F.fabricNodes.map(n=>({id:n.id,name:n.name,type:n.type,state:n.state,events:n.events})),
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='udcsef-state-'+Date.now()+'.json'; a.click();
+  URL.revokeObjectURL(url);
+  fabricLog('ok','State exported to JSON');
+}
+
+// ── GLOBAL UI UPDATE ──────────────────────────────────────────────────────────
+function updateAllUI() {
+  // Stats
+  document.getElementById('stat-nodes').textContent = F.fabricNodes.length;
+  document.getElementById('stat-events').textContent = F.events.length;
+  document.getElementById('stat-msgs').textContent = F.fabricNodes.reduce((a,n)=>a+(n.messageQueue?.length||0),0);
+  document.getElementById('stat-lamport').textContent = F.lc.get();
+  document.getElementById('r-lamport').textContent = F.lc.get();
+  document.getElementById('r-events').textContent = F.events.length;
+  document.getElementById('r-blocks').textContent = F.ledger.length;
+  document.getElementById('r-head-hash').textContent = F.globalHash ? '0x'+F.globalHash.slice(0,18)+'...' : '—';
+  document.getElementById('tel-events').textContent = F.events.length;
+
+  // Net panel
+  document.getElementById('net-nodes').textContent = F.nodes.size;
+  document.getElementById('net-peers').textContent = F.peers.size;
+  document.getElementById('net-blocks').textContent = F.ledger.length;
+  document.getElementById('my-vc').textContent = F.vc.toString().slice(0,60);
+  document.getElementById('my-lt').textContent = F.lc.get();
+
+  // Node list (P2P panel)
+  const nl = document.getElementById('net-node-list');
+  nl.innerHTML = '';
+  F.nodes.forEach((node,id) => {
+    const d = document.createElement('div');
+    d.className = 'node-card' + (node.isSelf?' self':'');
+    d.innerHTML = `<div class="node-id-label">${id.slice(0,20)}${node.isSelf?' (self)':''}</div>
+      <div style="font-size:9px;color:var(--muted)">Lamport: ${node.lt||0}</div>
+      <div class="vc-display">${JSON.stringify(node.vc||{}).slice(0,80)}</div>`;
+    nl.appendChild(d);
+  });
+
+  // Ledger entries
+  const le = document.getElementById('ledger-entries');
+  le.innerHTML = F.ledger.slice(-8).reverse().map(b=>`
+    <div class="ledger-entry">
+      <strong>Block ${b.index}</strong>
+      <div class="ledger-hash">${b.hash||'—'}</div>
+      <div class="ledger-ts">${new Date(b.timestamp).toLocaleTimeString()} · ${b.events.length} events</div>
+    </div>`).join('');
+
+  // Timeline
+  const tw = document.getElementById('timeline-wrap');
+  tw.innerHTML = F.events.slice(-20).map((e,i)=>`
+    <div class="tl-event">
+      <div class="tl-dot${i<F.events.slice(-20).length-1?' causal':''}"></div>
+      <div class="tl-lt">L:${e.lt||'?'}</div>
+      <div class="tl-label" title="${e.type}">${e.type}</div>
+    </div>`).join('');
+
+  // Compute tasks
+  const ct = document.getElementById('compute-tasks');
+  ct.innerHTML = '';
+  F.computeTasks.forEach(task => {
+    const pct = (task.results.length/task.expected)*100;
+    const d = document.createElement('div');
+    d.className = 'compute-task';
+    d.innerHTML = `<strong>${task.type}</strong><div style="font-size:9px;color:var(--muted)">${task.status} — ${task.results.length}/${task.expected}</div><div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`;
+    ct.appendChild(d);
+  });
+
+  buildStateMatrix();
+  buildCausalChain();
+
+  // Sparkle system health
+  const cpu = 22+Math.random()*30;
+  document.getElementById('cpu-val').textContent = Math.round(cpu)+'%';
+  document.getElementById('cpu-bar').style.width = cpu+'%';
+  document.getElementById('cpu-bar').style.background = cpu>65?'var(--amber)':'var(--accent)';
+  const net = 0.6+Math.random()*1.8;
+  document.getElementById('net-val').textContent = net.toFixed(1)+' GB/s';
+  document.getElementById('net-bar').style.width = (net/3*100)+'%';
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function nav(id, el) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  el.classList.add('active');
+  if (id==='network') { setTimeout(initD3Graph, 100); }
+  if (id==='telemetry') { setTimeout(initTelemetry, 100); }
+}
+
+function selectTab(el, tabId) {
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['rules-core','rules-dist','rules-fault','rules-compose'].forEach(id=>{
+    const el2 = document.getElementById(id);
+    if (el2) el2.style.display = id===tabId?'block':'none';
+  });
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ── PERIODIC UPDATES ──────────────────────────────────────────────────────────
+setInterval(updateAllUI, 3000);
+setInterval(()=>{ renderFabricCanvas(); }, 1500);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key==='e') { e.preventDefault(); exportState(); }
+  if (e.ctrlKey && e.key==='n') { e.preventDefault(); addFabricNode(); }
+  if (e.ctrlKey && e.key==='r') { e.preventDefault(); runFabric(); }
+  if (e.key==='Escape') { document.querySelectorAll('.modal.active').forEach(m=>m.classList.remove('active')); hideNodePopup(); }
+});
+
+window.addEventListener('resize', ()=>{ renderFabricCanvas(); });
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', ()=>{ init(); });
+</script>
+</body>
+</html>

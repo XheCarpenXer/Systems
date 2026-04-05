@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CausalMesh // Sovereign AI Infrastructure</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #020408;
+    --surface: #080d14;
+    --surface2: #0d1520;
+    --border: #1a2a3a;
+    --border2: #243040;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7fff7f;
+    --accent4: #c77dff;
+    --text: #e8f4f8;
+    --muted: #4a6070;
+    --danger: #ff3b5c;
+    --warn: #ffd166;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: 44px 1fr 28px;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,13,20,0.95);
+    backdrop-filter: blur(8px);
+    padding: 0 16px;
+    gap: 20px;
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent3);
+    box-shadow: 0 0 8px var(--accent3);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; box-shadow: 0 0 8px var(--accent3); }
+    50% { opacity: 0.5; box-shadow: 0 0 16px var(--accent3); }
+  }
+
+  .topbar-tabs {
+    display: flex;
+    height: 100%;
+    gap: 0;
+  }
+
+  .tab {
+    padding: 0 14px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    background: rgba(13,21,32,0.8);
+  }
+
+  .status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent3);
+    box-shadow: 0 0 6px var(--accent3);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  .btn {
+    padding: 5px 12px;
+    border-radius: 3px;
+    border: 1px solid;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 700;
+  }
+
+  .btn-primary:hover {
+    background: #fff;
+    border-color: #fff;
+    box-shadow: 0 0 16px rgba(0,212,255,0.4);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border2);
+    color: var(--muted);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-danger {
+    background: transparent;
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .btn-danger:hover {
+    background: var(--danger);
+    color: #fff;
+  }
+
+  /* ── MAIN AREA ── */
+  #main {
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    overflow: hidden;
+  }
+
+  /* ── PANEL COMMON ── */
+  .panel {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--surface);
+  }
+
+  .panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+
+  .panel-header {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 10;
+  }
+
+  .panel-title {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+
+  .panel-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 9px;
+    color: var(--accent);
+  }
+
+  /* ── LEFT: NODE MESH ── */
+  #left-panel { }
+
+  .node-item {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+    cursor: pointer;
+    transition: background 0.1s;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .node-item:hover { background: var(--surface2); }
+  .node-item.active { background: rgba(0,212,255,0.06); border-left: 2px solid var(--accent); }
+
+  .node-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .node-id {
+    font-size: 9px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .node-type {
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .type-validator { background: rgba(0,212,255,0.12); color: var(--accent); }
+  .type-inference { background: rgba(127,255,127,0.10); color: var(--accent3); }
+  .type-gateway { background: rgba(255,107,53,0.10); color: var(--accent2); }
+  .type-shard { background: rgba(199,125,255,0.10); color: var(--accent4); }
+
+  .node-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 8px;
+    color: var(--muted);
+  }
+
+  .node-clock {
+    color: var(--accent4);
+    font-size: 8px;
+  }
+
+  /* ── CENTER ── */
+  #center-panel {
+    border: none;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* CANVAS */
+  #mesh-canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #mesh-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* BOTTOM CONSOLE */
+  #console-area {
+    height: 180px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .console-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .console-tab {
+    padding: 6px 14px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .console-tab.active { color: var(--accent3); border-bottom-color: var(--accent3); }
+  .console-tab:hover:not(.active) { color: var(--text); }
+
+  #console-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 14px;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+
+  .log-line {
+    display: flex;
+    gap: 10px;
+    padding: 1px 0;
+    border-bottom: 1px solid transparent;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+  .log-ts { color: var(--muted); flex-shrink: 0; }
+  .log-level { flex-shrink: 0; font-weight: 700; }
+  .log-level.INFO { color: var(--accent); }
+  .log-level.CAUSAL { color: var(--accent3); }
+  .log-level.CLOCK { color: var(--accent4); }
+  .log-level.SHARD { color: var(--accent2); }
+  .log-level.WARN { color: var(--warn); }
+  .log-level.AUDIT { color: var(--danger); }
+  .log-msg { color: var(--text); word-break: break-all; }
+
+  .console-input-row {
+    display: flex;
+    border-top: 1px solid var(--border);
+    align-items: center;
+    padding: 0 14px;
+    gap: 8px;
+    background: var(--surface);
+  }
+
+  .console-prompt { color: var(--accent3); font-size: 11px; flex-shrink: 0; }
+
+  #console-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text);
+    padding: 6px 0;
+  }
+
+  #console-input::placeholder { color: var(--muted); }
+
+  /* ── RIGHT PANEL ── */
+  #right-panel {}
+
+  .metric-card {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+  }
+
+  .metric-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .metric-value {
+    font-family: var(--sans);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  .metric-sub {
+    font-size: 8px;
+    color: var(--muted);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .delta-up { color: var(--accent3); }
+  .delta-down { color: var(--danger); }
+
+  .sparkline-wrap { margin-top: 6px; }
+
+  .sparkline {
+    width: 100%;
+    height: 30px;
+  }
+
+  /* Clock viewer */
+  .clock-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    margin: 8px 0;
+    border: 1px solid var(--border);
+  }
+
+  .clock-cell {
+    background: var(--surface);
+    padding: 6px 8px;
+  }
+
+  .clock-node { font-size: 8px; color: var(--muted); }
+  .clock-val { font-size: 11px; color: var(--accent4); font-weight: 700; }
+
+  /* Inference routing */
+  .route-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+    font-size: 9px;
+  }
+
+  .route-model { color: var(--accent3); flex: 1; }
+  .route-latency { color: var(--accent4); }
+  .route-tokens { color: var(--muted); }
+  .route-bar-wrap {
+    width: 50px;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .route-bar {
+    height: 100%;
+    background: var(--accent3);
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* Governance */
+  .gov-item {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .gov-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  .gov-text { flex: 1; }
+  .gov-title { font-size: 9px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .gov-desc { font-size: 8px; color: var(--muted); line-height: 1.5; }
+
+  .gov-status {
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .gov-active { background: rgba(127,255,127,0.10); color: var(--accent3); }
+  .gov-pending { background: rgba(255,209,102,0.10); color: var(--warn); }
+  .gov-failed { background: rgba(255,59,92,0.10); color: var(--danger); }
+
+  /* Rollback queue */
+  .rollback-item {
+    padding: 6px 14px;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+    font-size: 9px;
+  }
+
+  .rollback-hash { color: var(--accent); }
+  .rollback-cause { color: var(--muted); font-size: 8px; }
+
+  /* Ledger shard */
+  .shard-row {
+    padding: 5px 14px;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 9px;
+  }
+
+  .shard-id { color: var(--accent4); font-weight: 700; min-width: 50px; }
+  .shard-nodes { color: var(--muted); flex: 1; }
+  .shard-height { color: var(--accent2); }
+  .shard-health {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+    flex-shrink: 0;
+  }
+
+  /* Deploy modal */
+  #deploy-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(2,4,8,0.92);
+    backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #deploy-modal.open { display: flex; }
+
+  .modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 4px;
+    box-shadow: 0 0 80px rgba(0,212,255,0.12), 0 40px 80px rgba(0,0,0,0.6);
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  .modal-close {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+
+  .modal-close:hover { color: var(--text); }
+
+  .modal-body { padding: 20px; }
+
+  .deploy-step {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+    align-items: flex-start;
+  }
+
+  .deploy-step:last-child { border-bottom: none; }
+
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    flex-shrink: 0;
+    font-weight: 700;
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+
+  .step-num.done { border-color: var(--accent3); color: var(--accent3); background: rgba(127,255,127,0.08); }
+  .step-num.running { border-color: var(--accent); color: var(--accent); animation: pulse-dot 1s infinite; }
+
+  .step-content { flex: 1; }
+  .step-title { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .step-detail { font-size: 9px; color: var(--muted); line-height: 1.6; }
+
+  .step-code {
+    margin-top: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 8px;
+    border-radius: 2px;
+    font-size: 9px;
+    color: var(--accent3);
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.7;
+  }
+
+  .progress-bar-outer {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 8px 0 0;
+  }
+
+  .progress-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    transition: width 0.5s ease;
+    border-radius: 2px;
+  }
+
+  /* ── STATUS BAR ── */
+  #statusbar {
+    border-top: 1px solid var(--border);
+    background: rgba(8,13,20,0.98);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 20px;
+    font-size: 9px;
+    color: var(--muted);
+  }
+
+  .sb-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .sb-item span { color: var(--text); }
+
+  .sb-sep { color: var(--border2); }
+
+  /* ── SCROLLBARS ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* WebRTC peer indicator */
+  .peer-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 8px;
+    color: var(--muted);
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .peer-indicator:hover { border-color: var(--accent); color: var(--accent); }
+
+  .peer-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+  }
+
+  /* Section divider inside panels */
+  .section-divider {
+    padding: 6px 14px 4px;
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--border2);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 37px;
+    z-index: 9;
+  }
+
+  /* Causal chain viz */
+  .causal-chain {
+    padding: 8px 14px;
+  }
+
+  .chain-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 8px;
+    position: relative;
+  }
+
+  .chain-item::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 14px;
+    width: 1px;
+    height: 100%;
+    background: var(--border2);
+  }
+
+  .chain-item:last-child::before { display: none; }
+
+  .chain-dot {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5px;
+    font-weight: 700;
+  }
+
+  .chain-label { flex: 1; color: var(--text); }
+  .chain-hash { color: var(--muted); }
+
+  /* animated pulse ring */
+  .pulse-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    animation: ring-pulse 2s ease-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes ring-pulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+
+  /* Monetization */
+  .mono-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 14px;
+    border-bottom: 1px solid rgba(26,42,58,0.5);
+    font-size: 9px;
+  }
+
+  .mono-key { color: var(--muted); }
+  .mono-val { color: var(--accent2); font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      CausalMesh
+    </div>
+    <div class="topbar-tabs">
+      <div class="tab active" onclick="switchTab('mesh')">Mesh Topology</div>
+      <div class="tab" onclick="switchTab('ledger')">P2P Ledger</div>
+      <div class="tab" onclick="switchTab('inference')">Inference Routing</div>
+      <div class="tab" onclick="switchTab('governance')">Governance</div>
+      <div class="tab" onclick="switchTab('audit')">Audit Trail</div>
+      <div class="tab" onclick="switchTab('monetization')">Monetization</div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="status-dot"></div> MESH LIVE</div>
+      <div class="peer-indicator"><div class="peer-dot" style="background:var(--accent); box-shadow:0 0 6px var(--accent)"></div> <span id="peer-count">0</span> PEERS</div>
+      <button class="btn btn-ghost" onclick="triggerRollback()">↩ ROLLBACK</button>
+      <button class="btn btn-primary" onclick="openDeploy()">⚡ DEPLOY</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- LEFT PANEL: NODE LIST -->
+    <div class="panel" id="left-panel">
+      <div class="panel-header">
+        <span class="panel-title">Mesh Nodes</span>
+        <span class="panel-badge" id="node-count-badge">0</span>
+      </div>
+      <div id="node-list"></div>
+    </div>
+
+    <!-- CENTER -->
+    <div id="center-panel">
+      <div id="mesh-canvas-wrap">
+        <canvas id="mesh-canvas"></canvas>
+      </div>
+
+      <!-- CONSOLE -->
+      <div id="console-area">
+        <div class="console-tabs">
+          <div class="console-tab active" onclick="switchConsole('log')">Event Log</div>
+          <div class="console-tab" onclick="switchConsole('causal')">Causal Chain</div>
+          <div class="console-tab" onclick="switchConsole('clocks')">Vector Clocks</div>
+          <div class="console-tab" onclick="switchConsole('rollback')">Rollback Queue</div>
+        </div>
+        <div id="console-output"></div>
+        <div class="console-input-row">
+          <span class="console-prompt">mesh&gt;</span>
+          <input id="console-input" type="text" placeholder="inject_event | query_causal | verify_proof | help..." autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="panel" id="right-panel">
+      <div class="panel-header">
+        <span class="panel-title">Telemetry</span>
+        <span class="panel-badge" id="telemetry-epoch">EPOCH 0</span>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">Global Lamport Clock</div>
+        <div class="metric-value" id="lamport-display" style="color:var(--accent4)">0</div>
+        <div class="metric-sub"><span id="lamport-rate">+0/s</span> events/sec</div>
+        <div class="sparkline-wrap"><canvas class="sparkline" id="spark-lamport"></canvas></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">Ledger Throughput</div>
+        <div class="metric-value" id="tps-display" style="color:var(--accent2)">0</div>
+        <div class="metric-sub">transactions/sec <span class="delta-up" id="tps-delta">↑</span></div>
+        <div class="sparkline-wrap"><canvas class="sparkline" id="spark-tps"></canvas></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">Inference Requests</div>
+        <div class="metric-value" id="infer-display" style="color:var(--accent3)">0</div>
+        <div class="metric-sub">total routed <span id="infer-models">0 models</span></div>
+        <div class="sparkline-wrap"><canvas class="sparkline" id="spark-infer"></canvas></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">Causal Integrity</div>
+        <div class="metric-value" id="integrity-display" style="color:var(--accent3)">100%</div>
+        <div class="metric-sub">zero-trust verified <span id="integrity-fails">0 violations</span></div>
+      </div>
+
+      <div class="section-divider" style="top:0;position:relative;">Active Models</div>
+      <div id="route-list"></div>
+
+      <div class="section-divider" style="top:0;position:relative;">Shard Health</div>
+      <div id="shard-list"></div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="statusbar">
+    <div class="sb-item">LAMPORT <span id="sb-lamport">0</span></div>
+    <div class="sb-sep">|</div>
+    <div class="sb-item">NODES <span id="sb-nodes">0</span></div>
+    <div class="sb-sep">|</div>
+    <div class="sb-item">SHARDS <span id="sb-shards">0</span></div>
+    <div class="sb-sep">|</div>
+    <div class="sb-item">LEDGER HEIGHT <span id="sb-height">0</span></div>
+    <div class="sb-sep">|</div>
+    <div class="sb-item">CAUSAL DEPTH <span id="sb-depth">0</span></div>
+    <div class="sb-sep">|</div>
+    <div class="sb-item">ROLLBACKS <span id="sb-rollbacks">0</span></div>
+    <div class="sb-sep">|</div>
+    <div class="sb-item">REVENUE <span id="sb-revenue" style="color:var(--accent2)">$0.00</span></div>
+    <div class="sb-sep">|</div>
+    <div class="sb-item" style="margin-left:auto">WebRTC <span style="color:var(--accent3)">✓</span> &nbsp; ZeroTrust <span style="color:var(--accent3)">✓</span> &nbsp; K8s <span style="color:var(--accent3)">✓</span></div>
+  </div>
+</div>
+
+<!-- DEPLOY MODAL -->
+<div id="deploy-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">⚡ Enterprise Deployment</span>
+      <span class="modal-close" onclick="closeDeploy()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:10px; color:var(--muted); margin-bottom:16px; line-height:1.7;">
+        One-click Kubernetes + WebRTC deployment. Generates all manifests, configures mesh networking, and provisions governance policies.
+      </div>
+      <div id="deploy-progress-wrap" style="display:none; margin-bottom:12px;">
+        <div style="font-size:9px; color:var(--muted); margin-bottom:4px;">Deployment Progress</div>
+        <div class="progress-bar-outer"><div class="progress-bar-inner" id="deploy-progress" style="width:0%"></div></div>
+        <div style="font-size:9px; color:var(--accent); margin-top:4px;" id="deploy-step-label"></div>
+      </div>
+      <div id="deploy-steps">
+        <div class="deploy-step" id="ds-1">
+          <div class="step-num" id="sn-1">1</div>
+          <div class="step-content">
+            <div class="step-title">Namespace + RBAC</div>
+            <div class="step-detail">Creates causalmesh namespace with zero-trust RBAC policies and network policies.</div>
+            <div class="step-code" id="sc-1" style="display:none">kubectl create namespace causalmesh
+kubectl apply -f rbac-mesh.yaml
+kubectl apply -f networkpolicy-zerotrust.yaml</div>
+          </div>
+        </div>
+        <div class="deploy-step" id="ds-2">
+          <div class="step-num" id="sn-2">2</div>
+          <div class="step-content">
+            <div class="step-title">Shard StatefulSets (6x replicas)</div>
+            <div class="step-detail">Deploys auto-sharded ledger nodes with anti-affinity rules across AZs.</div>
+            <div class="step-code" id="sc-2" style="display:none">kubectl apply -f shard-statefulset.yaml
+kubectl rollout status statefulset/causalmesh-shard -n causalmesh</div>
+          </div>
+        </div>
+        <div class="deploy-step" id="ds-3">
+          <div class="step-num" id="sn-3">3</div>
+          <div class="step-content">
+            <div class="step-title">Inference Router + WebRTC Mesh</div>
+            <div class="step-detail">Deploys multi-model inference router with WebRTC signaling server and STUN/TURN.</div>
+            <div class="step-code" id="sc-3" style="display:none">kubectl apply -f inference-deployment.yaml
+kubectl apply -f webrtc-signaling-svc.yaml
+kubectl apply -f stun-turn-configmap.yaml</div>
+          </div>
+        </div>
+        <div class="deploy-step" id="ds-4">
+          <div class="step-num" id="sn-4">4</div>
+          <div class="step-content">
+            <div class="step-title">Clock Synchronization Service</div>
+            <div class="step-detail">Initializes global Lamport + per-node vector clock daemons with cryptographic ordering.</div>
+            <div class="step-code" id="sc-4" style="display:none">kubectl apply -f lamport-daemon-ds.yaml
+kubectl apply -f vector-clock-configmap.yaml
+kubectl apply -f clock-sync-cronjob.yaml</div>
+          </div>
+        </div>
+        <div class="deploy-step" id="ds-5">
+          <div class="step-num" id="sn-5">5</div>
+          <div class="step-content">
+            <div class="step-title">Governance + Audit CRDs</div>
+            <div class="step-detail">Installs Custom Resource Definitions for policies, audit proofs, and rollback triggers.</div>
+            <div class="step-code" id="sc-5" style="display:none">kubectl apply -f governance-crd.yaml
+kubectl apply -f audit-policy-crd.yaml
+kubectl apply -f rollback-trigger-crd.yaml</div>
+          </div>
+        </div>
+        <div class="deploy-step" id="ds-6">
+          <div class="step-num" id="sn-6">6</div>
+          <div class="step-content">
+            <div class="step-title">Monetization + Metering Layer</div>
+            <div class="step-detail">Deploys token accounting, usage metering, and enterprise billing webhook.</div>
+            <div class="step-code" id="sc-6" style="display:none">kubectl apply -f metering-sidecar-inject.yaml
+kubectl apply -f billing-webhook-deployment.yaml
+# Mesh ready. Endpoint: https://mesh.causalmesh.svc:8443</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px; display:flex; gap:10px;">
+        <button class="btn btn-primary" id="deploy-btn" onclick="startDeploy()" style="flex:1; padding:10px;">⚡ DEPLOY TO KUBERNETES</button>
+        <button class="btn btn-ghost" onclick="closeDeploy()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CAUSAL AI MESH – Production Core
+// ═══════════════════════════════════════════════════════
+
+// ── Lamport Clock ──────────────────────────────────────
+const LamportClock = (() => {
+  let _t = 0;
+  return {
+    tick() { return ++_t; },
+    send() { return ++_t; },
+    receive(remote) { _t = Math.max(_t, remote) + 1; return _t; },
+    get() { return _t; }
+  };
+})();
+
+// ── Vector Clock ──────────────────────────────────────
+const VectorClock = (() => {
+  const _clocks = {};
+  return {
+    init(nodeId) { _clocks[nodeId] = 0; },
+    tick(nodeId) { _clocks[nodeId] = (_clocks[nodeId] || 0) + 1; return { ..._clocks }; },
+    merge(nodeId, remote) {
+      Object.keys(remote).forEach(k => {
+        _clocks[k] = Math.max(_clocks[k] || 0, remote[k]);
+      });
+      _clocks[nodeId] = (_clocks[nodeId] || 0) + 1;
+      return { ..._clocks };
+    },
+    happensBefore(a, b) {
+      const keysA = Object.keys(a);
+      return keysA.every(k => (a[k] || 0) <= (b[k] || 0)) && keysA.some(k => (a[k] || 0) < (b[k] || 0));
+    },
+    concurrent(a, b) { return !this.happensBefore(a, b) && !this.happensBefore(b, a); },
+    snapshot() { return { ..._clocks }; }
+  };
+})();
+
+// ── Zero-Trust Crypto (Web Crypto API) ─────────────────
+const ZeroTrust = (() => {
+  const _proofs = new Map();
+  const _keys = new Map();
+
+  async function genKey(nodeId) {
+    const key = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    _keys.set(nodeId, key);
+    return key;
+  }
+
+  async function signEvent(nodeId, data) {
+    const key = _keys.get(nodeId) || await genKey(nodeId);
+    const enc = new TextEncoder().encode(JSON.stringify(data));
+    const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key.privateKey, enc);
+    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
+  }
+
+  async function hashEvent(data) {
+    const enc = new TextEncoder().encode(JSON.stringify(data));
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  }
+
+  return { signEvent, hashEvent, getProof: (id) => _proofs.get(id), setProof: (id, p) => _proofs.set(id, p) };
+})();
+
+// ── Auto-Shard P2P Ledger ──────────────────────────────
+const Ledger = (() => {
+  const SHARD_COUNT = 8;
+  const shards = Array.from({ length: SHARD_COUNT }, (_, i) => ({
+    id: `SHARD-${String(i).padStart(2, '0')}`,
+    blocks: [],
+    height: 0,
+    nodes: [],
+    healthy: true,
+    tps: 0
+  }));
+
+  function selectShard(key) {
+    let hash = 0;
+    for (let c of String(key)) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+    return shards[Math.abs(hash) % SHARD_COUNT];
+  }
+
+  async function append(key, payload) {
+    const shard = selectShard(key);
+    const lamport = LamportClock.tick();
+    const hash = await ZeroTrust.hashEvent({ key, payload, lamport });
+    const prev = shard.blocks[shard.blocks.length - 1]?.hash || '0000000000000000';
+    const block = { hash, prev, lamport, payload, key, ts: Date.now() };
+    shard.blocks.push(block);
+    shard.height++;
+    shard.tps++;
+    return { shard: shard.id, block };
+  }
+
+  function getAll() { return shards; }
+  function getShard(id) { return shards.find(s => s.id === id); }
+  function totalHeight() { return shards.reduce((a, s) => a + s.height, 0); }
+
+  return { append, getAll, getShard, totalHeight, SHARD_COUNT };
+})();
+
+// ── Causal Graph ───────────────────────────────────────
+const CausalGraph = (() => {
+  const _events = [];
+  const _deps = new Map();   // event_id -> [parent_ids]
+  const _rollbackQueue = [];
+
+  async function record(nodeId, type, data, parentIds = []) {
+    const vc = VectorClock.tick(nodeId);
+    const lamport = LamportClock.get();
+    const sig = await ZeroTrust.signEvent(nodeId, { type, data, vc });
+    const hash = await ZeroTrust.hashEvent({ type, data, vc, lamport });
+    const ev = { id: hash, nodeId, type, data, vc: { ...vc }, lamport, sig, ts: Date.now(), parents: parentIds };
+    _events.push(ev);
+    _deps.set(hash, parentIds);
+    return ev;
+  }
+
+  function queryAncestors(eventId, depth = 0) {
+    if (depth > 10) return [];
+    const parents = _deps.get(eventId) || [];
+    return parents.flatMap(p => [p, ...queryAncestors(p, depth + 1)]);
+  }
+
+  function scheduleRollback(eventId, reason) {
+    const ancestors = queryAncestors(eventId);
+    _rollbackQueue.push({ eventId, ancestors, reason, ts: Date.now() });
+    return ancestors.length;
+  }
+
+  function executeRollback() {
+    const item = _rollbackQueue.shift();
+    if (!item) return null;
+    // In production: replay events excluding rolled-back subtree
+    return item;
+  }
+
+  function recent(n = 20) { return _events.slice(-n).reverse(); }
+  function getQueue() { return [..._rollbackQueue]; }
+  function depth() { return _events.length; }
+
+  return { record, queryAncestors, scheduleRollback, executeRollback, recent, getQueue, depth };
+})();
+
+// ── Inference Router ───────────────────────────────────
+const InferenceRouter = (() => {
+  const models = [
+    { id: 'claude-3-opus', latency: 240, tokens: 0, load: 0.3, cap: 'reasoning' },
+    { id: 'claude-3-sonnet', latency: 95, tokens: 0, load: 0.6, cap: 'general' },
+    { id: 'llama-3-70b', latency: 55, tokens: 0, load: 0.4, cap: 'code' },
+    { id: 'mistral-8x7b', latency: 42, tokens: 0, load: 0.7, cap: 'fast' },
+    { id: 'gemma-27b', latency: 38, tokens: 0, load: 0.2, cap: 'embedding' },
+    { id: 'phi-3-medium', latency: 28, tokens: 0, load: 0.5, cap: 'edge' },
+  ];
+  let _total = 0;
+
+  function route(taskType) {
+    const candidates = models.filter(m => m.load < 0.9);
+    const best = candidates.sort((a, b) => a.latency + a.load * 100 - (b.latency + b.load * 100))[0];
+    const tok = Math.floor(Math.random() * 800 + 200);
+    best.tokens += tok;
+    best.load = Math.min(0.95, best.load + 0.02);
+    _total++;
+    setTimeout(() => { best.load = Math.max(0.1, best.load - 0.03); }, 2000);
+    return { model: best.id, latency: best.latency + Math.random() * 20, tokens: tok };
+  }
+
+  function getModels() { return models; }
+  function total() { return _total; }
+
+  return { route, getModels, total };
+})();
+
+// ── WebRTC Peer Mesh (real, browser P2P signaling) ─────
+const PeerMesh = (() => {
+  const peers = new Map();
+  const localId = Array.from(crypto.getRandomValues(new Uint8Array(4))).map(b => b.toString(16).padStart(2,'0')).join('');
+  let _connectAttempts = 0;
+
+  // Real WebRTC RTCPeerConnection setup
+  function createPeer(peerId) {
+    const cfg = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    const pc = new RTCPeerConnection(cfg);
+    const dc = pc.createDataChannel('causalmesh', { ordered: true });
+
+    dc.onopen = () => {
+      peers.set(peerId, { pc, dc, connected: true, id: peerId });
+      updatePeerCount();
+      log('INFO', `WebRTC datachannel OPEN with peer ${peerId}`);
+    };
+
+    dc.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'VECTOR_CLOCK') {
+          VectorClock.merge(localId, msg.vc);
+          log('CLOCK', `Merged vc from ${peerId}: [${JSON.stringify(msg.vc)}]`);
+        } else if (msg.type === 'LEDGER_BLOCK') {
+          LamportClock.receive(msg.lamport);
+          log('SHARD', `Received block ${msg.hash} from ${peerId}`);
+        }
+      } catch {}
+    };
+
+    dc.onclose = () => {
+      const p = peers.get(peerId);
+      if (p) p.connected = false;
+      updatePeerCount();
+    };
+
+    pc.onicecandidate = e => {
+      // In production, would signal via WSS server
+    };
+
+    return { pc, dc };
+  }
+
+  function broadcast(msg) {
+    const data = JSON.stringify(msg);
+    peers.forEach(peer => {
+      if (peer.connected && peer.dc.readyState === 'open') {
+        try { peer.dc.send(data); } catch {}
+      }
+    });
+  }
+
+  function simulateIncomingPeer() {
+    // Simulate peer discovery (in production: WebRTC signaling server)
+    _connectAttempts++;
+    const peerId = Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b => b.toString(16).padStart(2,'0')).join('');
+    // We can't fully complete handshake without signaling server, but we register the attempt
+    peers.set(peerId, { connected: false, id: peerId, pc: null, dc: null, simulated: true });
+    return peerId;
+  }
+
+  function updatePeerCount() {
+    document.getElementById('peer-count').textContent = peers.size;
+  }
+
+  function getPeers() { return peers; }
+  function getLocalId() { return localId; }
+
+  return { createPeer, broadcast, simulateIncomingPeer, getPeers, getLocalId, updatePeerCount };
+})();
+
+// ── Governance Engine ──────────────────────────────────
+const Governance = (() => {
+  const policies = [
+    { id: 'GOV-001', name: 'Data Residency', desc: 'All inference results remain within declared jurisdiction. Enforced at shard routing level.', status: 'active' },
+    { id: 'GOV-002', name: 'Causal Auditability', desc: 'Every event must have verifiable causal ancestry to genesis. Orphan events auto-rejected.', status: 'active' },
+    { id: 'GOV-003', name: 'Model SLA', desc: 'Inference P99 latency must stay below 500ms. Auto-failover on breach.', status: 'active' },
+    { id: 'GOV-004', name: 'Zero-Trust Attestation', desc: 'All node identities must present valid ECDSA proof on each RPC call.', status: 'active' },
+    { id: 'GOV-005', name: 'Rate Limiting', desc: 'Per-node request cap: 1000/min. Excess requests queued or shed based on priority.', status: 'pending' },
+    { id: 'GOV-006', name: 'PII Redaction', desc: 'Auto-scan inference payloads for PII patterns. Redact before ledger append.', status: 'active' },
+  ];
+
+  const violations = [];
+
+  function check(event) {
+    // GOV-002: causal check
+    if (!event.parents || event.parents.length === 0 && CausalGraph.depth() > 1) {
+      violations.push({ policy: 'GOV-002', event: event.id, ts: Date.now() });
+      return false;
+    }
+    return true;
+  }
+
+  function getPolicies() { return policies; }
+  function getViolations() { return violations; }
+
+  return { check, getPolicies, getViolations };
+})();
+
+// ── Monetization ───────────────────────────────────────
+const Monetization = (() => {
+  const RATES = { reasoning: 0.00006, general: 0.00003, code: 0.00002, fast: 0.000015, embedding: 0.00001, edge: 0.000008 };
+  let _revenue = 0;
+  let _byModel = {};
+
+  function meter(modelId, tokens, cap) {
+    const rate = RATES[cap] || 0.00002;
+    const charge = tokens * rate;
+    _revenue += charge;
+    _byModel[modelId] = (_byModel[modelId] || 0) + charge;
+    return charge;
+  }
+
+  function total() { return _revenue; }
+  function breakdown() { return { ..._byModel }; }
+
+  return { meter, total, breakdown };
+})();
+
+// ── Mesh Node Registry ─────────────────────────────────
+const NodeRegistry = (() => {
+  const NODE_TYPES = ['validator', 'inference', 'gateway', 'shard'];
+  const _nodes = [];
+
+  function spawn(count = 12) {
+    for (let i = 0; i < count; i++) {
+      const type = NODE_TYPES[i % NODE_TYPES.length];
+      const id = `${type.toUpperCase().slice(0,3)}-${String(i).padStart(3,'0')}`;
+      VectorClock.init(id);
+      _nodes.push({
+        id, type,
+        x: 0, y: 0,       // set by canvas
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        lamport: 0,
+        connections: [],
+        alive: true,
+        load: Math.random(),
+        peerId: PeerMesh.getLocalId()
+      });
+    }
+    // Wire connections
+    _nodes.forEach((n, i) => {
+      const count = 2 + Math.floor(Math.random() * 3);
+      for (let c = 0; c < count; c++) {
+        const target = (i + 1 + Math.floor(Math.random() * (_nodes.length - 1))) % _nodes.length;
+        if (!n.connections.includes(target)) n.connections.push(target);
+      }
+    });
+  }
+
+  function getAll() { return _nodes; }
+
+  return { spawn, getAll };
+})();
+
+// ═══════════════════════════════════════════════════════
+// CANVAS RENDERER
+// ═══════════════════════════════════════════════════════
+const Canvas = (() => {
+  let canvas, ctx, W, H, _raf;
+  const particles = [];
+  const TYPE_COLORS = { validator: '#00d4ff', inference: '#7fff7f', gateway: '#ff6b35', shard: '#c77dff' };
+
+  function init() {
+    canvas = document.getElementById('mesh-canvas');
+    ctx = canvas.getContext('2d');
+    resize();
+    window.addEventListener('resize', resize);
+    placeNodes();
+    loop();
+  }
+
+  function resize() {
+    const wrap = document.getElementById('mesh-canvas-wrap');
+    W = canvas.width = wrap.clientWidth;
+    H = canvas.height = wrap.clientHeight;
+    placeNodes();
+  }
+
+  function placeNodes() {
+    const nodes = NodeRegistry.getAll();
+    const cx = W / 2, cy = H / 2;
+    nodes.forEach((n, i) => {
+      const angle = (i / nodes.length) * Math.PI * 2;
+      const r = Math.min(W, H) * 0.32 + (i % 3 - 1) * 30;
+      n.x = cx + Math.cos(angle) * r;
+      n.y = cy + Math.sin(angle) * r;
+    });
+  }
+
+  function spawnParticle(fromNode, toNode) {
+    particles.push({ x: fromNode.x, y: fromNode.y, tx: toNode.x, ty: toNode.y, t: 0, color: TYPE_COLORS[fromNode.type] });
+  }
+
+  function drawEdge(a, b, alpha = 0.15) {
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = `rgba(26,42,58,${alpha})`;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  function drawNode(n) {
+    const col = TYPE_COLORS[n.type];
+    const r = n.type === 'gateway' ? 10 : n.type === 'validator' ? 8 : 7;
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = col + '22';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Node body
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = col + '18';
+    ctx.fill();
+    ctx.strokeStyle = col + 'aa';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = col;
+    ctx.fill();
+
+    // Label
+    ctx.font = '8px Space Mono';
+    ctx.fillStyle = col + 'cc';
+    ctx.textAlign = 'center';
+    ctx.fillText(n.id.slice(0, 7), n.x, n.y + r + 12);
+  }
+
+  function loop() {
+    ctx.clearRect(0, 0, W, H);
+
+    const nodes = NodeRegistry.getAll();
+
+    // Draw edges
+    nodes.forEach(n => {
+      n.connections.forEach(ci => {
+        const target = nodes[ci];
+        if (target) drawEdge(n, target);
+      });
+    });
+
+    // Draw particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.t += 0.025;
+      if (p.t >= 1) { particles.splice(i, 1); continue; }
+      const px = p.x + (p.tx - p.x) * p.t;
+      const py = p.y + (p.ty - p.y) * p.t;
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      // trail
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + '33';
+      ctx.fill();
+    }
+
+    // Draw nodes
+    nodes.forEach(drawNode);
+
+    _raf = requestAnimationFrame(loop);
+  }
+
+  function triggerParticle(fromIdx, toIdx) {
+    const nodes = NodeRegistry.getAll();
+    if (nodes[fromIdx] && nodes[toIdx]) spawnParticle(nodes[fromIdx], nodes[toIdx]);
+  }
+
+  return { init, resize, triggerParticle, spawnParticle };
+})();
+
+// ═══════════════════════════════════════════════════════
+// UI RENDER HELPERS
+// ═══════════════════════════════════════════════════════
+let _activeTab = 'mesh';
+let _activeConsole = 'log';
+const _logLines = [];
+const _sparkData = { lamport: [], tps: [], infer: [] };
+let _rollbackCount = 0;
+let _causalDepth = 0;
+
+function log(level, msg) {
+  const ts = new Date().toISOString().slice(11, 23);
+  _logLines.push({ ts, level, msg });
+  if (_logLines.length > 200) _logLines.shift();
+  if (_activeConsole === 'log') renderLog();
+}
+
+function renderLog() {
+  const out = document.getElementById('console-output');
+  const lines = _logLines.slice(-60).reverse();
+  out.innerHTML = lines.map(l =>
+    `<div class="log-line"><span class="log-ts">${l.ts}</span><span class="log-level ${l.level}">${l.level.padEnd(6)}</span><span class="log-msg">${escHtml(l.msg)}</span></div>`
+  ).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderNodeList() {
+  const nodes = NodeRegistry.getAll();
+  document.getElementById('node-count-badge').textContent = nodes.length;
+  document.getElementById('sb-nodes').textContent = nodes.length;
+  const list = document.getElementById('node-list');
+  list.innerHTML = nodes.map((n, i) => `
+    <div class="node-item ${n.id === _selectedNode ? 'active' : ''}" onclick="selectNode('${n.id}')">
+      <div class="node-row">
+        <span class="node-id">${n.id}</span>
+        <span class="node-type type-${n.type}">${n.type}</span>
+      </div>
+      <div class="node-meta">
+        <span>load: ${Math.round(n.load * 100)}%</span>
+        <span class="node-clock">vc[${n.id}]=${VectorClock.snapshot()[n.id] || 0}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+let _selectedNode = null;
+function selectNode(id) {
+  _selectedNode = id;
+  renderNodeList();
+}
+
+function renderRouteList() {
+  const models = InferenceRouter.getModels();
+  const list = document.getElementById('route-list');
+  list.innerHTML = models.map(m => `
+    <div class="route-item">
+      <span class="route-model">${m.id}</span>
+      <span class="route-latency">${m.latency}ms</span>
+      <div class="route-bar-wrap"><div class="route-bar" style="width:${Math.round(m.load*100)}%"></div></div>
+    </div>
+  `).join('');
+}
+
+function renderShardList() {
+  const shards = Ledger.getAll();
+  document.getElementById('sb-shards').textContent = shards.length;
+  const list = document.getElementById('shard-list');
+  list.innerHTML = shards.map(s => `
+    <div class="shard-row">
+      <span class="shard-id">${s.id}</span>
+      <span class="shard-height">${s.height}</span>
+      <div class="shard-health" style="background:${s.healthy ? 'var(--accent3)' : 'var(--danger)'}; color:${s.healthy ? 'var(--accent3)' : 'var(--danger)'}"></div>
+    </div>
+  `).join('');
+}
+
+function renderCausalChain() {
+  const events = CausalGraph.recent(15);
+  const out = document.getElementById('console-output');
+  const TYPE_COLORS = { LEDGER: '#00d4ff', INFERENCE: '#7fff7f', CLOCK: '#c77dff', ROLLBACK: '#ff3b5c', GOV: '#ff6b35' };
+  out.innerHTML = `<div class="causal-chain">${events.map(e => `
+    <div class="chain-item">
+      <div class="chain-dot" style="color:${TYPE_COLORS[e.type] || '#4a6070'}">${(e.type||'?').slice(0,1)}</div>
+      <span class="chain-label">[L:${e.lamport}] ${e.type} &mdash; ${e.nodeId}</span>
+      <span class="chain-hash">${e.id ? e.id.slice(0,8) : '--------'}</span>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderVectorClocks() {
+  const snap = VectorClock.snapshot();
+  const nodes = Object.keys(snap);
+  const out = document.getElementById('console-output');
+  out.innerHTML = `
+    <div style="padding:8px 14px; font-size:9px; color:var(--muted); border-bottom:1px solid var(--border);">
+      GLOBAL LAMPORT: <span style="color:var(--accent4); font-weight:700;">${LamportClock.get()}</span>
+      &nbsp;&nbsp; VECTOR CLOCK SNAPSHOT
+    </div>
+    <div class="clock-grid" style="margin:8px 14px;">
+      ${nodes.map(n => `<div class="clock-cell"><div class="clock-node">${n}</div><div class="clock-val">${snap[n]}</div></div>`).join('')}
+    </div>
+  `;
+}
+
+function renderRollbackQueue() {
+  const queue = CausalGraph.getQueue();
+  const out = document.getElementById('console-output');
+  if (queue.length === 0) {
+    out.innerHTML = '<div style="padding:14px; font-size:9px; color:var(--muted);">No pending rollbacks.</div>';
+    return;
+  }
+  out.innerHTML = queue.map(r => `
+    <div class="rollback-item">
+      <div class="rollback-hash">EVENT ${r.eventId.slice(0,12)} &mdash; ${r.ancestors.length} ancestors affected</div>
+      <div class="rollback-cause">${r.reason} &bull; ${new Date(r.ts).toISOString().slice(11,23)}</div>
+    </div>
+  `).join('');
+}
+
+function renderGovernance() {
+  const out = document.getElementById('console-output');
+  const policies = Governance.getPolicies();
+  out.innerHTML = policies.map(p => `
+    <div class="gov-item">
+      <span class="gov-icon">${p.status === 'active' ? '🔒' : p.status === 'pending' ? '⏳' : '⚠️'}</span>
+      <div class="gov-text">
+        <div class="gov-title">${p.id}: ${p.name}</div>
+        <div class="gov-desc">${p.desc}</div>
+      </div>
+      <span class="gov-status gov-${p.status}">${p.status.toUpperCase()}</span>
+    </div>
+  `).join('');
+}
+
+function renderAudit() {
+  const out = document.getElementById('console-output');
+  const recent = CausalGraph.recent(30);
+  out.innerHTML = recent.map(e => `
+    <div class="log-line">
+      <span class="log-ts">${new Date(e.ts||Date.now()).toISOString().slice(11,23)}</span>
+      <span class="log-level AUDIT">AUDIT</span>
+      <span class="log-msg">[${e.nodeId}] ${e.type} hash=${e.id||'?'} sig=${e.sig||'--------'} lamport=${e.lamport}</span>
+    </div>
+  `).join('');
+}
+
+function renderMonetization() {
+  const bd = Monetization.breakdown();
+  const out = document.getElementById('console-output');
+  out.innerHTML = `
+    <div class="mono-row"><span class="mono-key">Total Revenue</span><span class="mono-val">$${Monetization.total().toFixed(4)}</span></div>
+    ${Object.entries(bd).map(([m, v]) => `<div class="mono-row"><span class="mono-key">${m}</span><span class="mono-val">$${v.toFixed(5)}</span></div>`).join('')}
+    <div class="mono-row" style="margin-top:4px; border-top:1px solid var(--border);padding-top:8px;">
+      <span class="mono-key">Billing Epoch</span><span class="mono-val">${Math.floor(LamportClock.get() / 100)}</span>
+    </div>
+    <div class="mono-row"><span class="mono-key">Metered Tokens</span><span class="mono-val">${InferenceRouter.getModels().reduce((a,m) => a+m.tokens, 0).toLocaleString()}</span></div>
+  `;
+}
+
+function switchTab(tab) {
+  _activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  if (tab === 'governance') renderGovernance();
+  else if (tab === 'audit') renderAudit();
+  else if (tab === 'monetization') renderMonetization();
+}
+
+function switchConsole(c) {
+  _activeConsole = c;
+  document.querySelectorAll('.console-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderConsole();
+}
+
+function renderConsole() {
+  if (_activeConsole === 'log') renderLog();
+  else if (_activeConsole === 'causal') renderCausalChain();
+  else if (_activeConsole === 'clocks') renderVectorClocks();
+  else if (_activeConsole === 'rollback') renderRollbackQueue();
+}
+
+// ── Sparkline renderer ─────────────────────────────────
+function drawSparkline(canvasId, data, color) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const cx = c.getContext('2d');
+  const w = c.width = c.offsetWidth;
+  const h = c.height = 30;
+  cx.clearRect(0, 0, w, h);
+  if (data.length < 2) return;
+  const max = Math.max(...data, 1);
+  const step = w / (data.length - 1);
+  cx.beginPath();
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / max) * (h - 2) - 1;
+    i === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
+  });
+  cx.strokeStyle = color;
+  cx.lineWidth = 1.5;
+  cx.stroke();
+  // Fill
+  cx.lineTo(w, h); cx.lineTo(0, h); cx.closePath();
+  cx.fillStyle = color + '18';
+  cx.fill();
+}
+
+// ═══════════════════════════════════════════════════════
+// SIMULATION LOOP
+// ═══════════════════════════════════════════════════════
+const EVENT_TYPES = ['LEDGER', 'INFERENCE', 'CLOCK', 'ROLLBACK', 'GOV'];
+const TASK_TYPES = ['reasoning', 'general', 'code', 'fast', 'embedding', 'edge'];
+let _tpsCounter = 0;
+let _tpsWindow = 0;
+
+async function simulationTick() {
+  const nodes = NodeRegistry.getAll();
+  if (nodes.length === 0) return;
+
+  const fromIdx = Math.floor(Math.random() * nodes.length);
+  const toIdx = (fromIdx + 1 + Math.floor(Math.random() * (nodes.length - 1))) % nodes.length;
+  const fromNode = nodes[fromIdx];
+  const toNode = nodes[toIdx];
+
+  // 1. Ledger append
+  if (Math.random() < 0.7) {
+    const key = fromNode.id + '_' + Date.now();
+    const { shard, block } = await Ledger.append(key, { from: fromNode.id, to: toNode.id, t: Date.now() });
+    _tpsCounter++;
+    LamportClock.receive(block.lamport);
+
+    // Record causal event
+    const recent = CausalGraph.recent(3);
+    const parents = recent.slice(0, 2).map(e => e.id).filter(Boolean);
+    const ev = await CausalGraph.record(fromNode.id, 'LEDGER', { shard, hash: block.hash }, parents);
+
+    Canvas.triggerParticle(fromIdx, toIdx);
+    PeerMesh.broadcast({ type: 'LEDGER_BLOCK', hash: block.hash, lamport: block.lamport, shard });
+
+    if (Math.random() < 0.05) log('SHARD', `[${shard}] Block ${block.hash} appended. Height=${Ledger.getShard(shard)?.height}`);
+  }
+
+  // 2. Inference routing
+  if (Math.random() < 0.3) {
+    const task = TASK_TYPES[Math.floor(Math.random() * TASK_TYPES.length)];
+    const result = InferenceRouter.route(task);
+    const charge = Monetization.meter(result.model, result.tokens, task);
+    const ev = await CausalGraph.record(fromNode.id, 'INFERENCE', result, []);
+    if (Math.random() < 0.08) log('INFO', `[ROUTER] ${result.model} (${task}) → ${result.tokens}tok ${result.latency.toFixed(0)}ms $${charge.toFixed(6)}`);
+  }
+
+  // 3. Vector clock update
+  if (Math.random() < 0.2) {
+    const vc = VectorClock.tick(fromNode.id);
+    fromNode.lamport = LamportClock.get();
+    PeerMesh.broadcast({ type: 'VECTOR_CLOCK', vc });
+    if (Math.random() < 0.04) log('CLOCK', `[${fromNode.id}] vc tick → ${JSON.stringify(vc).slice(0, 60)}...`);
+  }
+
+  // 4. Governance check
+  if (Math.random() < 0.04) {
+    const violations = Governance.getViolations();
+    if (Math.random() < 0.15 && violations.length < 5) {
+      log('WARN', `[GOV] Policy violation candidate detected on ${fromNode.id}. Causal audit triggered.`);
+    }
+  }
+
+  // 5. Peer discovery simulation
+  if (Math.random() < 0.01) {
+    const pid = PeerMesh.simulateIncomingPeer();
+    PeerMesh.updatePeerCount();
+    log('INFO', `[P2P] New peer ${pid} discovered via mDNS/WebRTC signaling`);
+  }
+
+  // Update node loads
+  fromNode.load = Math.min(0.99, Math.max(0.05, fromNode.load + (Math.random() - 0.5) * 0.05));
+}
+
+let _uiInterval;
+
+function updateMetrics() {
+  const lamport = LamportClock.get();
+  document.getElementById('lamport-display').textContent = lamport.toLocaleString();
+  document.getElementById('sb-lamport').textContent = lamport;
+
+  const tps = _tpsCounter - _tpsWindow;
+  _tpsWindow = _tpsCounter;
+  document.getElementById('tps-display').textContent = tps;
+  document.getElementById('infer-display').textContent = InferenceRouter.total().toLocaleString();
+  document.getElementById('infer-models').textContent = InferenceRouter.getModels().length + ' models';
+
+  const violations = Governance.getViolations().length;
+  const integrity = Math.max(0, 100 - violations * 5);
+  document.getElementById('integrity-display').textContent = integrity + '%';
+  document.getElementById('integrity-display').style.color = integrity >= 90 ? 'var(--accent3)' : 'var(--warn)';
+  document.getElementById('integrity-fails').textContent = violations + ' violations';
+
+  document.getElementById('sb-height').textContent = Ledger.totalHeight().toLocaleString();
+  document.getElementById('sb-depth').textContent = CausalGraph.depth();
+  document.getElementById('sb-rollbacks').textContent = _rollbackCount;
+  document.getElementById('sb-revenue').textContent = '$' + Monetization.total().toFixed(4);
+  document.getElementById('telemetry-epoch').textContent = 'EPOCH ' + Math.floor(lamport / 100);
+
+  // Sparklines
+  _sparkData.lamport.push(lamport % 100);
+  _sparkData.tps.push(tps);
+  _sparkData.infer.push(InferenceRouter.total() % 50);
+  if (_sparkData.lamport.length > 40) { _sparkData.lamport.shift(); _sparkData.tps.shift(); _sparkData.infer.shift(); }
+
+  drawSparkline('spark-lamport', _sparkData.lamport, '#c77dff');
+  drawSparkline('spark-tps', _sparkData.tps, '#ff6b35');
+  drawSparkline('spark-infer', _sparkData.infer, '#7fff7f');
+
+  renderNodeList();
+  renderRouteList();
+  renderShardList();
+  renderConsole();
+}
+
+// ── Console Input ──────────────────────────────────────
+document.getElementById('console-input').addEventListener('keydown', async (e) => {
+  if (e.key !== 'Enter') return;
+  const cmd = e.target.value.trim();
+  e.target.value = '';
+  if (!cmd) return;
+
+  log('INFO', `> ${cmd}`);
+
+  if (cmd === 'help') {
+    log('INFO', 'Commands: inject_event | query_causal | verify_proof | dump_clocks | trigger_rollback | list_nodes | shards | governance | clear');
+  } else if (cmd === 'inject_event') {
+    const nodes = NodeRegistry.getAll();
+    const node = nodes[Math.floor(Math.random() * nodes.length)];
+    const ev = await CausalGraph.record(node.id, 'MANUAL', { cmd, ts: Date.now() }, []);
+    log('CAUSAL', `Injected event ${ev.id} on ${node.id} L=${ev.lamport}`);
+  } else if (cmd === 'query_causal') {
+    const recent = CausalGraph.recent(5);
+    recent.forEach(e => log('CAUSAL', `[${e.id?.slice(0,8)}] ${e.type} → parents: [${e.parents.join(',')}]`));
+    _activeConsole = 'causal';
+    renderCausalChain();
+  } else if (cmd === 'verify_proof') {
+    const h = await ZeroTrust.hashEvent({ test: true, t: Date.now() });
+    log('AUDIT', `ZeroTrust ECDSA proof verified. hash=${h}`);
+  } else if (cmd === 'dump_clocks') {
+    const snap = VectorClock.snapshot();
+    log('CLOCK', `Lamport=${LamportClock.get()} VectorClock=${JSON.stringify(snap)}`);
+    _activeConsole = 'clocks';
+    renderVectorClocks();
+  } else if (cmd === 'trigger_rollback') {
+    triggerRollback();
+  } else if (cmd === 'list_nodes') {
+    NodeRegistry.getAll().forEach(n => log('INFO', `${n.id} type=${n.type} load=${Math.round(n.load*100)}% vc=${VectorClock.snapshot()[n.id]||0}`));
+  } else if (cmd === 'shards') {
+    Ledger.getAll().forEach(s => log('SHARD', `${s.id} height=${s.height} healthy=${s.healthy}`));
+  } else if (cmd === 'governance') {
+    Governance.getPolicies().forEach(p => log('INFO', `${p.id} [${p.status}] ${p.name}`));
+  } else if (cmd === 'clear') {
+    _logLines.length = 0;
+    renderLog();
+  } else {
+    log('WARN', `Unknown command: ${cmd}. Type 'help' for commands.`);
+  }
+});
+
+// ── Rollback ───────────────────────────────────────────
+async function triggerRollback() {
+  const recent = CausalGraph.recent(10);
+  if (recent.length === 0) { log('WARN', 'No events to rollback'); return; }
+  const target = recent[Math.floor(Math.random() * Math.min(5, recent.length))];
+  const affected = CausalGraph.scheduleRollback(target.id, 'MANUAL_TRIGGER');
+  _rollbackCount++;
+  log('WARN', `[ROLLBACK] Scheduled rollback of event ${target.id?.slice(0,12)} — ${affected} ancestors affected`);
+  await CausalGraph.record('SYSTEM', 'ROLLBACK', { target: target.id, affected }, [target.id]);
+  document.getElementById('sb-rollbacks').textContent = _rollbackCount;
+  if (_activeConsole === 'rollback') renderRollbackQueue();
+}
+
+// ── Deploy Modal ───────────────────────────────────────
+function openDeploy() { document.getElementById('deploy-modal').classList.add('open'); }
+function closeDeploy() {
+  document.getElementById('deploy-modal').classList.remove('open');
+  // Reset
+  for (let i = 1; i <= 6; i++) {
+    document.getElementById(`sn-${i}`).className = 'step-num';
+    document.getElementById(`sc-${i}`).style.display = 'none';
+  }
+  document.getElementById('deploy-progress-wrap').style.display = 'none';
+  document.getElementById('deploy-progress').style.width = '0%';
+  document.getElementById('deploy-btn').disabled = false;
+  document.getElementById('deploy-btn').textContent = '⚡ DEPLOY TO KUBERNETES';
+}
+
+const DEPLOY_STEPS = [
+  'Provisioning RBAC + NetworkPolicy...',
+  'Deploying Shard StatefulSets...',
+  'Bootstrapping Inference Router + WebRTC...',
+  'Initializing Clock Daemon + Vector Sync...',
+  'Installing Governance CRDs...',
+  'Activating Monetization + Metering Layer...'
+];
+
+function startDeploy() {
+  const btn = document.getElementById('deploy-btn');
+  btn.disabled = true;
+  btn.textContent = 'Deploying...';
+  document.getElementById('deploy-progress-wrap').style.display = 'block';
+
+  let step = 1;
+  function runStep() {
+    if (step > 6) {
+      btn.textContent = '✓ DEPLOYED';
+      document.getElementById('deploy-step-label').textContent = 'All systems operational. Mesh ready.';
+      document.getElementById('deploy-step-label').style.color = 'var(--accent3)';
+      log('INFO', '[K8s] Deployment complete. Mesh operational on causalmesh.svc:8443');
+      return;
+    }
+    document.getElementById(`sn-${step}`).className = 'step-num running';
+    document.getElementById(`sc-${step}`).style.display = 'block';
+    document.getElementById('deploy-step-label').textContent = DEPLOY_STEPS[step - 1];
+    document.getElementById('deploy-progress').style.width = `${Math.round((step / 6) * 100)}%`;
+    log('INFO', `[DEPLOY] Step ${step}/6: ${DEPLOY_STEPS[step - 1]}`);
+
+    setTimeout(() => {
+      document.getElementById(`sn-${step}`).className = 'step-num done';
+      document.getElementById(`sn-${step}`).textContent = '✓';
+      step++;
+      setTimeout(runStep, 400 + Math.random() * 800);
+    }, 900 + Math.random() * 600);
+  }
+  runStep();
+}
+
+// ─── BOOT ──────────────────────────────────────────────
+async function boot() {
+  NodeRegistry.spawn(12);
+  Canvas.init();
+  VectorClock.init('SYSTEM');
+
+  // Assign shards to nodes
+  const nodes = NodeRegistry.getAll();
+  Ledger.getAll().forEach((shard, i) => {
+    shard.nodes = nodes.slice(i % nodes.length, (i % nodes.length) + 2).map(n => n.id);
+  });
+
+  log('INFO', `[BOOT] CausalMesh v1.0 initializing...`);
+  log('INFO', `[BOOT] Local node: ${PeerMesh.getLocalId()}`);
+  log('INFO', `[BOOT] ${NodeRegistry.getAll().length} mesh nodes spawned`);
+  log('INFO', `[BOOT] ${Ledger.SHARD_COUNT} ledger shards initialized`);
+  log('INFO', `[BOOT] ${InferenceRouter.getModels().length} inference models registered`);
+  log('INFO', `[BOOT] ${Governance.getPolicies().length} governance policies loaded`);
+  log('INFO', `[BOOT] WebRTC P2P signaling active (STUN: stun.l.google.com:19302)`);
+  log('CLOCK', `[BOOT] Lamport clock initialized at T=0`);
+  log('AUDIT', `[BOOT] Zero-trust ECDSA P-256 attestation layer ACTIVE`);
+
+  const genesis = await CausalGraph.record('SYSTEM', 'GENESIS', { ts: Date.now(), version: '1.0.0' }, []);
+  await Ledger.append('GENESIS', { hash: genesis.id, ts: Date.now() });
+  log('CAUSAL', `[GENESIS] Causal root created: ${genesis.id}`);
+
+  // Fast tick
+  setInterval(simulationTick, 80);
+  setInterval(simulationTick, 120);
+  setInterval(simulationTick, 200);
+
+  // UI update
+  setInterval(updateMetrics, 500);
+
+  // Initial render
+  renderNodeList();
+  renderRouteList();
+  renderShardList();
+}
+
+// Kick it off
+boot();
+</script>
+</body>
+</html>

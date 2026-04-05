@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FABRIC — Deterministic Execution over Time</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #030408;
+    --grid: rgba(0,220,180,0.04);
+    --accent: #00dca8;
+    --accent2: #ff4f6d;
+    --accent3: #7b5ea7;
+    --dim: rgba(0,220,168,0.3);
+    --text: #c8ffe8;
+    --muted: rgba(200,255,232,0.35);
+    --panel: rgba(0,220,168,0.04);
+    --border: rgba(0,220,168,0.12);
+    --font-mono: 'Space Mono', monospace;
+    --font-display: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    overflow: hidden;
+  }
+
+  /* ── CANVAS BACKGROUND ── */
+  #canvas-bg {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── LAYOUT ── */
+  #root {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 280px 1fr 300px;
+    height: 100vh;
+    gap: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(3,4,8,0.92);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo-mark {
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .logo-mark::before, .logo-mark::after {
+    content: '';
+    position: absolute;
+    border: 1.5px solid var(--accent);
+    border-radius: 2px;
+  }
+  .logo-mark::before { width: 100%; height: 100%; animation: spin 8s linear infinite; }
+  .logo-mark::after  { width: 60%; height: 60%; animation: spin 4s linear infinite reverse; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  header h1 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  header .tagline {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-left: auto;
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse-dot 2s ease-in-out infinite;
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+  .status-dot.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  @keyframes pulse-dot {
+    0%,100% { opacity:1; } 50% { opacity:0.4; }
+  }
+  #status-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+
+  /* ── LEFT PANEL: TEMPORAL LEDGER ── */
+  #left-panel {
+    grid-column: 1;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  .panel-title {
+    padding: 12px 16px;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::before {
+    content: '▸';
+    color: var(--accent);
+    font-size: 10px;
+  }
+
+  #ledger {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  #ledger::-webkit-scrollbar { width: 3px; }
+  #ledger::-webkit-scrollbar-track { background: transparent; }
+  #ledger::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .ledger-entry {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(0,220,168,0.05);
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .ledger-entry::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--accent3);
+    transform: scaleY(0);
+    transition: transform 0.2s;
+    transform-origin: top;
+  }
+  .ledger-entry:hover { background: rgba(0,220,168,0.04); }
+  .ledger-entry:hover::before { transform: scaleY(1); }
+  .ledger-entry.active::before { background: var(--accent); transform: scaleY(1); }
+  .ledger-entry.active { background: rgba(0,220,168,0.06); }
+
+  .entry-hash {
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+    opacity: 0.7;
+  }
+  .entry-preview {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .entry-time {
+    font-size: 8px;
+    color: rgba(200,255,232,0.2);
+    margin-top: 4px;
+  }
+  .entry-state-badge {
+    display: inline-block;
+    font-size: 7px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 2px;
+    margin-bottom: 3px;
+  }
+  .state-pending   { background: rgba(255,79,109,0.15); color: var(--accent2); }
+  .state-executing { background: rgba(0,220,168,0.15); color: var(--accent); animation: blink 1s ease-in-out infinite; }
+  .state-complete  { background: rgba(123,94,167,0.15); color: var(--accent3); }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── CENTER: EXECUTION THEATRE ── */
+  #center {
+    grid-column: 2;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  #execution-view {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  #execution-view::-webkit-scrollbar { width: 3px; }
+  #execution-view::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .node {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: node-in 0.4s ease both;
+  }
+  @keyframes node-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .node-meta {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .node-type {
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+  }
+  .type-intent  { background: rgba(255,79,109,0.12); color: var(--accent2); border: 1px solid rgba(255,79,109,0.2); }
+  .type-resolve { background: rgba(0,220,168,0.08); color: var(--accent); border: 1px solid rgba(0,220,168,0.15); }
+  .type-action  { background: rgba(123,94,167,0.12); color: var(--accent3); border: 1px solid rgba(123,94,167,0.2); }
+  .type-sync    { background: rgba(255,200,0,0.08); color: #ffc800; border: 1px solid rgba(255,200,0,0.15); }
+
+  .node-body {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+  }
+  .node-body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,220,168,0.03) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .node-body.streaming::after {
+    content: '▊';
+    color: var(--accent);
+    animation: blink 0.6s step-end infinite;
+    margin-left: 2px;
+  }
+
+  .node-hash {
+    font-size: 8px;
+    color: rgba(0,220,168,0.25);
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    text-align: right;
+    margin-top: 6px;
+  }
+
+  /* connector line */
+  .connector {
+    width: 1px; height: 20px;
+    background: linear-gradient(to bottom, rgba(0,220,168,0.3), rgba(123,94,167,0.3));
+    margin-left: 20px;
+    position: relative;
+  }
+  .connector::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: -3px;
+    width: 7px; height: 7px;
+    border-right: 1px solid var(--accent3);
+    border-bottom: 1px solid var(--accent3);
+    transform: rotate(45deg);
+  }
+
+  /* empty state */
+  #empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0.4;
+  }
+  #empty-state .glyph {
+    font-size: 48px;
+    color: var(--accent);
+    line-height: 1;
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)}
+  }
+  #empty-state p {
+    font-size: 11px;
+    text-align: center;
+    line-height: 1.8;
+    color: var(--muted);
+    max-width: 260px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── INPUT ZONE ── */
+  #input-zone {
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(10px);
+    padding: 16px 20px;
+  }
+
+  #model-bar {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  #model-select {
+    background: rgba(0,220,168,0.06);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    flex: 1;
+  }
+  #model-select:focus { border-color: rgba(0,220,168,0.4); }
+  #model-select option { background: #0a0f14; }
+
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 28px; height: 28px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 12px;
+    display: grid; place-items: center;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  #intent-row {
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+
+  #intent-input {
+    flex: 1;
+    background: rgba(0,220,168,0.04);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 10px 14px;
+    resize: none;
+    outline: none;
+    line-height: 1.6;
+    min-height: 44px;
+    max-height: 120px;
+    transition: border-color 0.2s;
+  }
+  #intent-input::placeholder { color: rgba(200,255,232,0.2); }
+  #intent-input:focus { border-color: rgba(0,220,168,0.4); }
+
+  #execute-btn {
+    background: rgba(0,220,168,0.1);
+    border: 1px solid rgba(0,220,168,0.3);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0 16px;
+    height: 44px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  #execute-btn:hover { background: rgba(0,220,168,0.18); border-color: var(--accent); }
+  #execute-btn:disabled {
+    opacity: 0.4; cursor: not-allowed;
+    background: transparent;
+  }
+  #execute-btn.running {
+    background: rgba(255,79,109,0.1);
+    border-color: rgba(255,79,109,0.3);
+    color: var(--accent2);
+  }
+
+  /* ── RIGHT PANEL: STATE FABRIC ── */
+  #right-panel {
+    grid-column: 3;
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: rgba(0,0,0,0.25);
+    overflow: hidden;
+  }
+
+  #state-view {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #state-view::-webkit-scrollbar { width: 2px; }
+  #state-view::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .state-block {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    animation: node-in 0.3s ease both;
+  }
+  .state-block-label {
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .state-block-label span { color: var(--accent); font-size: 9px; }
+  .state-block-value {
+    font-size: 10px;
+    color: var(--text);
+    line-height: 1.6;
+    word-break: break-all;
+  }
+
+  .fabric-graph {
+    flex: 0 0 auto;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .fabric-graph-title {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  #graph-canvas {
+    width: 100%;
+    height: 140px;
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: rgba(0,0,0,0.3);
+  }
+
+  /* ── ACTIONS STRIP ── */
+  #actions-strip {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .strip-title {
+    font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+  }
+  .action-buttons {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .action-btn {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,220,168,0.06); }
+  .action-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(255,79,109,0.06); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: rgba(10,15,20,0.95);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 11px;
+    padding: 8px 20px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+    transition: transform 0.3s ease;
+    z-index: 999;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+  }
+  #toast.visible { transform: translateX(-50%) translateY(0); }
+
+  /* ── SYNC OVERLAY ── */
+  #sync-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(3,4,8,0.95);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    backdrop-filter: blur(20px);
+  }
+  #sync-overlay.hidden { display: none; }
+  .sync-ring {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 1.2s linear infinite;
+  }
+  #sync-overlay p {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 2;
+  }
+  #sync-overlay p em { color: var(--accent); font-style: normal; }
+  .sync-skip {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 8px 20px; border-radius: 2px;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .sync-skip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* scrollbar global */
+  * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+</style>
+</head>
+<body>
+
+<!-- SYNC OVERLAY -->
+<div id="sync-overlay">
+  <div class="sync-ring"></div>
+  <p>Synchronizing with<br><em>local execution fabric</em><br>Connecting to Ollama...</p>
+  <button class="sync-skip" onclick="dismissOverlay()">Enter Offline</button>
+</div>
+
+<!-- BACKGROUND CANVAS -->
+<canvas id="canvas-bg"></canvas>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ROOT LAYOUT -->
+<div id="root">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-mark"></div>
+    <h1>Fabric</h1>
+    <div style="width:1px;height:24px;background:var(--border);margin:0 4px"></div>
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-label">Connecting...</span>
+    <div class="tagline">
+      DETERMINISTIC EXECUTION FABRIC<br>
+      INTELLIGENCE × DATA × ACTION ≡ TIME
+    </div>
+  </header>
+
+  <!-- LEFT: TEMPORAL LEDGER -->
+  <div id="left-panel">
+    <div class="panel-title">Temporal Ledger</div>
+    <div id="ledger"></div>
+  </div>
+
+  <!-- CENTER: EXECUTION THEATRE -->
+  <div id="center">
+    <div id="execution-view">
+      <div id="empty-state">
+        <div class="glyph">⬡</div>
+        <p>No execution nodes yet.<br>Every intent becomes a deterministic<br>operation over the shared fabric.</p>
+      </div>
+    </div>
+    <div id="input-zone">
+      <div id="model-bar">
+        <span>MODEL</span>
+        <select id="model-select">
+          <option value="">— loading —</option>
+        </select>
+        <button class="refresh-btn" onclick="fetchModels()" title="Refresh models">↻</button>
+      </div>
+      <div id="intent-row">
+        <textarea id="intent-input"
+          placeholder="Express an intent, query, or action... (⏎ to execute)"
+          rows="1"
+          spellcheck="false"
+        ></textarea>
+        <button id="execute-btn" onclick="executeIntent()">Execute</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: STATE FABRIC -->
+  <div id="right-panel">
+    <div class="panel-title">State Fabric</div>
+    <div id="state-view">
+      <div class="state-block">
+        <div class="state-block-label">Fabric Status <span id="fab-status">OFFLINE</span></div>
+        <div class="state-block-value" id="fab-status-val">Awaiting connection to local Ollama instance.</div>
+      </div>
+      <div class="state-block">
+        <div class="state-block-label">Execution Count <span id="exec-count">0</span></div>
+        <div class="state-block-value">Nodes dispatched in this session.</div>
+      </div>
+      <div class="state-block">
+        <div class="state-block-label">Global Hash <span id="global-hash">—</span></div>
+        <div class="state-block-value" style="font-size:9px;color:var(--muted)">Deterministic chain of all operations.</div>
+      </div>
+      <div class="state-block">
+        <div class="state-block-label">Active Model <span id="active-model-display">—</span></div>
+        <div class="state-block-value" id="active-model-val" style="font-size:9px;color:var(--muted)">No model selected.</div>
+      </div>
+    </div>
+
+    <div class="fabric-graph">
+      <div class="fabric-graph-title">Execution Graph</div>
+      <canvas id="graph-canvas"></canvas>
+    </div>
+
+    <div id="actions-strip">
+      <div class="strip-title">Fabric Actions</div>
+      <div class="action-buttons">
+        <button class="action-btn" onclick="exportLedger()">Export</button>
+        <button class="action-btn" onclick="syncFabric()">Sync</button>
+        <button class="action-btn danger" onclick="clearFabric()">Reset</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//   FABRIC ENGINE — deterministic state core
+// ════════════════════════════════════════════
+
+const OLLAMA_BASE = 'http://localhost:11434';
+
+const state = {
+  online: false,
+  models: [],
+  selectedModel: '',
+  nodes: [],          // { id, hash, type, intent, response, timestamp, state }
+  globalHash: null,
+  execCount: 0,
+  running: false,
+  abortController: null,
+};
+
+// ── HASH UTILITY ──
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,16);
+}
+
+function shortHash(h) { return h ? h.slice(0,8).toUpperCase() : '????????'; }
+
+// ── CANVAS BACKGROUND ──
+(function initBG() {
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function makeParticle() {
+    return {
+      x: Math.random()*W, y: Math.random()*H,
+      vx: (Math.random()-0.5)*0.18, vy: (Math.random()-0.5)*0.18,
+      r: Math.random()*1.2+0.3,
+      a: Math.random()*0.4+0.05,
+      color: Math.random() > 0.5 ? '0,220,168' : '123,94,167',
+    };
+  }
+
+  function init() {
+    resize();
+    particles = Array.from({length:80}, makeParticle);
+  }
+
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(0,220,168,0.03)';
+    ctx.lineWidth = 0.5;
+    const sz = 48;
+    for (let x=0;x<W;x+=sz) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y=0;y<H;y+=sz) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  }
+
+  function loop() {
+    ctx.clearRect(0,0,W,H);
+    drawGrid();
+
+    // draw connection lines
+    for (let i=0;i<particles.length;i++) {
+      for (let j=i+1;j<particles.length;j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d = Math.sqrt(dx*dx+dy*dy);
+        if (d < 120) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(0,220,168,${0.06*(1-d/120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    for (const p of particles) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${p.color},${p.a})`;
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if (p.x<0||p.x>W) p.vx*=-1;
+      if (p.y<0||p.y>H) p.vy*=-1;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', resize);
+  init();
+  loop();
+})();
+
+// ── GRAPH CANVAS ──
+function drawGraph() {
+  const canvas = document.getElementById('graph-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.offsetWidth * devicePixelRatio;
+  const H = canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const w = canvas.offsetWidth, h = canvas.offsetHeight;
+  ctx.clearRect(0,0,w,h);
+
+  const nodes = state.nodes;
+  if (!nodes.length) {
+    ctx.fillStyle = 'rgba(0,220,168,0.15)';
+    ctx.font = '10px Space Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('No execution graph yet', w/2, h/2);
+    return;
+  }
+
+  const margin = 20;
+  const maxVisible = Math.min(nodes.length, 12);
+  const visible = nodes.slice(-maxVisible);
+  const step = (w - margin*2) / Math.max(visible.length-1,1);
+
+  const colors = { pending:'#ff4f6d', executing:'#00dca8', complete:'#7b5ea7' };
+
+  // draw lines
+  for (let i=1;i<visible.length;i++) {
+    const x1 = margin + (i-1)*step, x2 = margin + i*step;
+    const y1 = h*0.5, y2 = h*0.5;
+    const grad = ctx.createLinearGradient(x1,y1,x2,y2);
+    grad.addColorStop(0, 'rgba(0,220,168,0.3)');
+    grad.addColorStop(1, 'rgba(123,94,167,0.3)');
+    ctx.beginPath();
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1;
+    ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.stroke();
+  }
+
+  // draw nodes
+  visible.forEach((node, i) => {
+    const x = margin + i*step, y = h*0.5;
+    const color = colors[node.state] || '#7b5ea7';
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI*2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI*2);
+    ctx.strokeStyle = color + '40';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // label
+    ctx.fillStyle = 'rgba(200,255,232,0.3)';
+    ctx.font = '7px Space Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(node.hash.slice(0,4), x, y+18);
+  });
+}
+
+// ── LEDGER ──
+function renderLedger() {
+  const ledger = document.getElementById('ledger');
+  if (!state.nodes.length) {
+    ledger.innerHTML = '<div style="padding:20px 16px;font-size:10px;color:rgba(200,255,232,0.2);text-align:center;line-height:2;letter-spacing:.1em">No operations<br>recorded yet.</div>';
+    return;
+  }
+  ledger.innerHTML = [...state.nodes].reverse().map((n,i) => `
+    <div class="ledger-entry ${i===0?'active':''}" onclick="focusNode('${n.id}')">
+      <div class="entry-state-badge state-${n.state}">${n.state}</div>
+      <div class="entry-hash">#${n.hash}</div>
+      <div class="entry-preview">${escHtml(n.intent.slice(0,60))}${n.intent.length>60?'…':''}</div>
+      <div class="entry-time">${n.timestamp}</div>
+    </div>
+  `).join('');
+}
+
+// ── STATE FABRIC PANEL ──
+function updateStateFabric() {
+  document.getElementById('exec-count').textContent = state.execCount;
+  document.getElementById('global-hash').textContent = state.globalHash ? shortHash(state.globalHash) : '—';
+  document.getElementById('active-model-display').textContent = state.selectedModel || '—';
+  document.getElementById('active-model-val').textContent = state.selectedModel
+    ? `Running ${state.selectedModel} via Ollama`
+    : 'No model selected.';
+  drawGraph();
+}
+
+// ── EXECUTION VIEW ──
+function renderNodes() {
+  const view = document.getElementById('execution-view');
+  const empty = document.getElementById('empty-state');
+  if (!state.nodes.length) {
+    empty && (empty.style.display = 'flex');
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  const existing = new Set([...view.querySelectorAll('[data-node-id]')].map(el=>el.dataset.nodeId));
+  for (const node of state.nodes) {
+    if (!existing.has(node.id)) {
+      if (state.nodes.indexOf(node) > 0) {
+        const conn = document.createElement('div');
+        conn.className = 'connector';
+        view.appendChild(conn);
+      }
+      const el = document.createElement('div');
+      el.className = 'node';
+      el.dataset.nodeId = node.id;
+      view.appendChild(el);
+    }
+    const el = view.querySelector(`[data-node-id="${node.id}"]`);
+    el.innerHTML = `
+      <div class="node-meta">
+        <span class="node-type type-intent">Intent</span>
+        <span>${node.timestamp}</span>
+        <span style="margin-left:auto;color:rgba(0,220,168,0.4)">#${node.hash}</span>
+      </div>
+      <div class="node-body">${escHtml(node.intent)}</div>
+      ${node.response !== undefined ? `
+        <div class="node-meta" style="margin-top:4px">
+          <span class="node-type type-resolve">Resolve</span>
+          <span>${node.state === 'executing' ? 'streaming...' : 'complete'}</span>
+        </div>
+        <div class="node-body${node.state==='executing'?' streaming':''}" id="resp-${node.id}">${renderMd(node.response || '')}</div>
+        <div class="node-hash">fabric::${state.globalHash || '—'}</div>
+      ` : ''}
+    `;
+  }
+  // scroll to bottom
+  view.scrollTop = view.scrollHeight;
+}
+
+// minimal markdown renderer
+function renderMd(text) {
+  return escHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(0,220,168,0.1);padding:1px 5px;border-radius:2px;font-size:0.9em">$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── OLLAMA API ──
+async function fetchModels() {
+  try {
+    const res = await fetch(`${OLLAMA_BASE}/api/tags`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('Bad response');
+    const data = await res.json();
+    const models = (data.models || []).map(m => m.name);
+    state.models = models;
+    state.online = true;
+    updateStatusUI(true);
+
+    const sel = document.getElementById('model-select');
+    sel.innerHTML = models.length
+      ? models.map(m => `<option value="${m}">${m}</option>`).join('')
+      : '<option value="">No models found — pull one via Ollama</option>';
+
+    if (models.length) {
+      state.selectedModel = models[0];
+      sel.value = models[0];
+    }
+    updateStateFabric();
+    toast('Fabric synchronized — ' + models.length + ' model(s) available');
+  } catch(e) {
+    state.online = false;
+    updateStatusUI(false);
+    document.getElementById('model-select').innerHTML = '<option value="">Ollama not reachable</option>';
+    updateStateFabric();
+  }
+}
+
+function updateStatusUI(online) {
+  const dot = document.getElementById('status-dot');
+  const lbl = document.getElementById('status-label');
+  const fabStatus = document.getElementById('fab-status');
+  const fabVal = document.getElementById('fab-status-val');
+  if (online) {
+    dot.classList.add('online');
+    lbl.textContent = 'Online · Ollama';
+    fabStatus.textContent = 'ONLINE';
+    fabStatus.style.color = 'var(--accent)';
+    fabVal.textContent = 'Connected to local Ollama instance. Fabric synchronized.';
+  } else {
+    dot.classList.remove('online');
+    lbl.textContent = 'Offline · No Ollama';
+    fabStatus.textContent = 'OFFLINE';
+    fabStatus.style.color = 'var(--accent2)';
+    fabVal.textContent = 'Cannot reach Ollama. Start it with: ollama serve';
+  }
+}
+
+// ── EXECUTE INTENT ──
+async function executeIntent() {
+  const input = document.getElementById('intent-input');
+  const btn = document.getElementById('execute-btn');
+  const intent = input.value.trim();
+  if (!intent) return;
+  if (state.running) { abortExecution(); return; }
+
+  const model = document.getElementById('model-select').value;
+  if (!model) { toast('Select a model first'); return; }
+
+  state.running = true;
+  btn.textContent = 'Abort';
+  btn.classList.add('running');
+  btn.disabled = false;
+  input.value = '';
+  autoResize(input);
+
+  const now = new Date();
+  const ts = now.toISOString().replace('T',' ').slice(0,19);
+  const nodeId = 'n' + Date.now();
+  const prevHash = state.globalHash || '0000000000000000';
+  const hash = await sha256(prevHash + intent + ts);
+
+  const node = { id: nodeId, hash: hash.slice(0,16), type:'intent', intent, response:'', timestamp:ts, state:'executing' };
+  state.nodes.push(node);
+  state.execCount++;
+  renderNodes();
+  renderLedger();
+
+  // Remove empty state
+  const empty = document.getElementById('empty-state');
+  if (empty) empty.style.display = 'none';
+
+  state.abortController = new AbortController();
+
+  try {
+    const res = await fetch(`${OLLAMA_BASE}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: state.abortController.signal,
+      body: JSON.stringify({
+        model,
+        messages: buildHistory(nodeId, intent),
+        stream: true,
+        options: { temperature: 0.7 }
+      })
+    });
+
+    if (!res.ok) throw new Error(`Ollama error: ${res.status}`);
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let full = '';
+
+    while(true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = dec.decode(value, { stream:true });
+      for (const line of chunk.split('\n')) {
+        if (!line.trim()) continue;
+        try {
+          const j = JSON.parse(line);
+          const tok = j?.message?.content || '';
+          full += tok;
+          node.response = full;
+          // update streaming element
+          const el = document.getElementById(`resp-${nodeId}`);
+          if (el) el.innerHTML = renderMd(full);
+          const view = document.getElementById('execution-view');
+          view.scrollTop = view.scrollHeight;
+        } catch{}
+      }
+    }
+
+    node.state = 'complete';
+    // update global hash
+    state.globalHash = await sha256(hash + full);
+    renderNodes();
+    renderLedger();
+    updateStateFabric();
+
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      node.state = 'complete';
+      node.response += '\n\n[aborted by operator]';
+    } else {
+      node.state = 'complete';
+      node.response = `Error: ${e.message}\n\nEnsure Ollama is running:\n  ollama serve`;
+      toast('Execution error: ' + e.message);
+    }
+    renderNodes();
+    renderLedger();
+    updateStateFabric();
+  }
+
+  state.running = false;
+  state.abortController = null;
+  btn.textContent = 'Execute';
+  btn.classList.remove('running');
+  drawGraph();
+}
+
+function abortExecution() {
+  if (state.abortController) {
+    state.abortController.abort();
+  }
+}
+
+function buildHistory(currentId, currentIntent) {
+  const msgs = [];
+  msgs.push({
+    role: 'system',
+    content: `You are the Fabric — a deterministic, globally-synchronized intelligence.
+You process intents and resolve them into actions and knowledge.
+You are aware that every interaction is a node in a causal execution graph.
+Your responses should be precise, insightful, and grounded in reason.
+Current global fabric hash: ${state.globalHash || '0000000000000000'}
+Execution node count: ${state.execCount}`
+  });
+  // include prior conversation
+  for (const n of state.nodes) {
+    if (n.id === currentId) continue;
+    if (n.state === 'complete') {
+      msgs.push({ role:'user', content: n.intent });
+      msgs.push({ role:'assistant', content: n.response });
+    }
+  }
+  msgs.push({ role:'user', content: currentIntent });
+  return msgs;
+}
+
+// ── FOCUS NODE ──
+function focusNode(id) {
+  const el = document.getElementById('execution-view').querySelector(`[data-node-id="${id}"]`);
+  if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+// ── FABRIC ACTIONS ──
+function exportLedger() {
+  const data = {
+    fabricVersion: '1.0',
+    exportedAt: new Date().toISOString(),
+    globalHash: state.globalHash,
+    execCount: state.execCount,
+    nodes: state.nodes.map(n => ({ hash:n.hash, intent:n.intent, response:n.response, timestamp:n.timestamp, state:n.state }))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `fabric-ledger-${Date.now()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Ledger exported');
+}
+
+function syncFabric() {
+  toast('Synchronizing fabric...');
+  fetchModels();
+}
+
+function clearFabric() {
+  if (state.running) { toast('Cannot reset during execution'); return; }
+  state.nodes = [];
+  state.globalHash = null;
+  state.execCount = 0;
+  const view = document.getElementById('execution-view');
+  view.innerHTML = `<div id="empty-state" class="empty-state" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;opacity:.4">
+    <div class="glyph" style="font-size:48px;color:var(--accent);animation:float 4s ease-in-out infinite">⬡</div>
+    <p style="font-size:11px;text-align:center;line-height:1.8;color:var(--muted);max-width:260px;letter-spacing:.05em">No execution nodes yet.<br>Every intent becomes a deterministic<br>operation over the shared fabric.</p>
+  </div>`;
+  renderLedger();
+  updateStateFabric();
+  toast('Fabric reset — ledger cleared');
+}
+
+// ── INPUT HELPERS ──
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+document.getElementById('intent-input').addEventListener('input', function() { autoResize(this); });
+document.getElementById('intent-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); executeIntent(); }
+});
+document.getElementById('model-select').addEventListener('change', function() {
+  state.selectedModel = this.value;
+  updateStateFabric();
+});
+
+// ── TOAST ──
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+// ── OVERLAY ──
+function dismissOverlay() {
+  document.getElementById('sync-overlay').classList.add('hidden');
+}
+
+// ── INIT ──
+async function init() {
+  await fetchModels();
+  setTimeout(() => {
+    dismissOverlay();
+    if (state.online) {
+      toast('Fabric online — ' + state.models.length + ' model(s) loaded');
+    } else {
+      toast('Offline mode — start Ollama to connect');
+    }
+  }, 1200);
+  renderLedger();
+  drawGraph();
+  window.addEventListener('resize', drawGraph);
+}
+
+init();
+</script>
+</body>
+</html>

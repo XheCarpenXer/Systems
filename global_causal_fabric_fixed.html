@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Causal Fabric - Unified Intelligence System</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --accent-cyan: #00f5ff;
+            --accent-magenta: #ff00ff;
+            --accent-gold: #ffd700;
+            --accent-green: #00ff88;
+            --text-primary: #e8e8e8;
+            --text-secondary: #888;
+            --border-color: #2a2a3a;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .matrix-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                var(--accent-cyan) 2px,
+                var(--accent-cyan) 4px
+            );
+            animation: scan 8s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100px); }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 350px 1fr 350px;
+            grid-template-rows: auto 1fr auto;
+            gap: 12px;
+            padding: 12px;
+            min-height: 100vh;
+        }
+        
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: conic-gradient(from 0deg, var(--accent-cyan), var(--accent-magenta), var(--accent-gold), var(--accent-cyan));
+            border-radius: 12px;
+            animation: rotate 10s linear infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo-icon::after {
+            content: '';
+            width: 36px;
+            height: 36px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+        }
+        
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+        
+        .logo h1 {
+            font-size: 1.4rem;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo span {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            display: block;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .status-bar {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .status-dot.active { background: var(--accent-green); }
+        .status-dot.warning { background: var(--accent-gold); }
+        .status-dot.error { background: #ff4444; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-header h2 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-cyan);
+        }
+        
+        .panel-content {
+            padding: 16px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .main-view {
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        #graph-container {
+            flex: 1;
+            min-height: 400px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        
+        #graph-container svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .node-circle {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .node-circle:hover {
+            filter: brightness(1.3);
+        }
+        
+        .link {
+            stroke-opacity: 0.6;
+            transition: stroke-opacity 0.3s;
+        }
+        
+        .link:hover {
+            stroke-opacity: 1;
+        }
+        
+        #timeline-container {
+            height: 200px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            overflow-x: auto;
+        }
+        
+        .timeline-event {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 24px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .timeline-event:hover {
+            transform: translateY(-4px);
+        }
+        
+        .timeline-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-cyan);
+            background: var(--bg-primary);
+            position: relative;
+        }
+        
+        .timeline-dot.causal::before {
+            content: '';
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            width: 24px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-cyan), transparent);
+        }
+        
+        .timeline-label {
+            font-size: 0.7rem;
+            margin-top: 8px;
+            color: var(--text-secondary);
+            max-width: 80px;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .timeline-time {
+            font-size: 0.65rem;
+            color: var(--accent-gold);
+            font-family: monospace;
+        }
+        
+        .ledger-entry {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-cyan);
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .ledger-entry:hover {
+            border-left-color: var(--accent-magenta);
+            transform: translateX(4px);
+        }
+        
+        .ledger-entry .hash {
+            font-family: monospace;
+            color: var(--accent-gold);
+            font-size: 0.7rem;
+            word-break: break-all;
+        }
+        
+        .ledger-entry .timestamp {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+        
+        .node-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .node-card {
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .node-card:hover {
+            border-color: var(--accent-cyan);
+        }
+        
+        .node-card.self {
+            border-color: var(--accent-green);
+        }
+        
+        .node-id {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            margin-bottom: 4px;
+        }
+        
+        .node-clock {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        
+        .ai-chat {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chat-message {
+            padding: 12px;
+            border-radius: 12px;
+            max-width: 95%;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        
+        .chat-message.user {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+            align-self: flex-end;
+            color: #000;
+        }
+        
+        .chat-message.ai {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            align-self: flex-start;
+        }
+        
+        .chat-message.system {
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-align: center;
+            align-self: center;
+        }
+        
+        .chat-input-container {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .chat-input:focus {
+            border-color: var(--accent-cyan);
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 245, 255, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 4px 20px rgba(0, 245, 255, 0.1);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+            min-width: 100px;
+            font-size: 0.75rem;
+            padding: 10px 12px;
+        }
+        
+        .vector-clock-display {
+            font-family: monospace;
+            font-size: 0.7rem;
+            padding: 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+        
+        .compute-task {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .compute-task .progress {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .compute-task .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
+            transition: width 0.3s ease;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .stat-card {
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        footer {
+            grid-column: 1 / -1;
+            padding: 12px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .console-output {
+            font-family: monospace;
+            font-size: 0.7rem;
+            max-height: 150px;
+            overflow-y: auto;
+            background: #000;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        
+        .console-line {
+            margin-bottom: 4px;
+        }
+        
+        .console-line.info { color: var(--accent-cyan); }
+        .console-line.success { color: var(--accent-green); }
+        .console-line.warning { color: var(--accent-gold); }
+        .console-line.error { color: #ff4444; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .input-group {
+            margin-bottom: 16px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            outline: none;
+        }
+        
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus {
+            border-color: var(--accent-cyan);
+        }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
+        
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+            }
+            
+            .main-view { min-height: 500px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <div>
+                    <h1>CAUSAL FABRIC</h1>
+                    <span>Globally Coordinated Deterministic Intelligence</span>
+                </div>
+            </div>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot" id="ollamaStatus"></div>
+                    <span>Ollama</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="p2pStatus"></div>
+                    <span>P2P Network</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot active" id="fabricStatus"></div>
+                    <span>Fabric Active</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Left Panel: Network & Nodes -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Network Nodes</h2>
+                <span id="nodeCount">0 nodes</span>
+            </div>
+            <div class="panel-content">
+                <div class="action-buttons" style="margin-bottom: 16px;">
+                    <button class="btn" onclick="createNode()">Create Node</button>
+                    <button class="btn btn-secondary" onclick="broadcastState()">Sync All</button>
+                </div>
+                
+                <div class="node-list" id="nodeList"></div>
+                
+                <div class="panel-header" style="margin-top: 16px; margin: 16px -16px 0; padding: 12px 16px;">
+                    <h2>Distributed Compute</h2>
+                </div>
+                
+                <div class="action-buttons" style="margin: 12px 0;">
+                    <button class="btn btn-secondary" onclick="submitComputeTask()">Submit Task</button>
+                </div>
+                
+                <div id="computeTasks"></div>
+            </div>
+        </div>
+        
+        <!-- Main View: Graph & Timeline -->
+        <div class="main-view">
+            <div class="panel" style="flex: 1;">
+                <div class="panel-header">
+                    <h2>Causal Graph Visualization</h2>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="resetGraph()">Reset</button>
+                        <button class="btn btn-secondary" onclick="exportGraph()">Export</button>
+                    </div>
+                </div>
+                <div id="graph-container"></div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Event Timeline</h2>
+                    <span id="eventCount">0 events</span>
+                </div>
+                <div id="timeline-container"></div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEvents">0</div>
+                    <div class="stat-label">Total Events</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="causalDepth">0</div>
+                    <div class="stat-label">Causal Depth</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="ledgerBlocks">0</div>
+                    <div class="stat-label">Ledger Blocks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="consensusRate">100%</div>
+                    <div class="stat-label">Consensus</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel: AI & Ledger -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>AI Intelligence (Ollama)</h2>
+            </div>
+            <div class="panel-content ai-chat">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message system">Connected to Causal Fabric Intelligence System</div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Ask the AI about causality..." onkeypress="if(event.key==='Enter')sendToAI()">
+                    <button class="btn" onclick="sendToAI()">Send</button>
+                </div>
+            </div>
+            
+            <div class="panel-header">
+                <h2>Distributed Ledger</h2>
+            </div>
+            <div class="panel-content" style="max-height: 250px;">
+                <div id="ledgerEntries"></div>
+            </div>
+            
+            <div class="panel-header">
+                <h2>System Console</h2>
+            </div>
+            <div class="console-output" id="consoleOutput"></div>
+        </div>
+        
+        <footer>
+            <div>Node ID: <span id="myNodeId">Initializing...</span></div>
+            <div>Vector Clock: <span id="myVectorClock">{}</span></div>
+            <div>Lamport Time: <span id="myLamportTime">0</span></div>
+        </footer>
+    </div>
+    
+    <!-- Compute Task Modal -->
+    <div class="modal" id="computeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Submit Distributed Compute Task</h2>
+                <button class="modal-close" onclick="closeModal('computeModal')">&times;</button>
+            </div>
+            <div class="input-group">
+                <label>Task Type</label>
+                <select id="taskType">
+                    <option value="ai-inference">AI Inference</option>
+                    <option value="hash-compute">Hash Computation</option>
+                    <option value="data-process">Data Processing</option>
+                    <option value="consensus">Consensus Round</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Task Data (JSON)</label>
+                <textarea id="taskData" rows="4" placeholder='{"input": "your data here"}'></textarea>
+            </div>
+            <button class="btn" onclick="executeComputeTask()" style="width:100%">Execute Across Network</button>
+        </div>
+    </div>
+
+    <script>
+    const OLLAMA_URL = 'http://localhost:11434';
+    const OLLAMA_MODEL = 'llama3';
+
+    class VectorClock {
+        constructor(nodeId) {
+            this.nodeId = nodeId;
+            this.clock = {};
+            this.clock[nodeId] = 0;
+        }
+
+        increment() {
+            this.clock[this.nodeId] = (this.clock[this.nodeId] || 0) + 1;
+            return this.copy();
+        }
+
+        merge(other) {
+            const allNodes = new Set([...Object.keys(this.clock), ...Object.keys(other)]);
+            allNodes.forEach(node => {
+                this.clock[node] = Math.max(this.clock[node] || 0, other[node] || 0);
+            });
+            this.clock[this.nodeId]++;
+            return this.copy();
+        }
+
+        copy() {
+            return Object.assign({}, this.clock);
+        }
+
+        happensBefore(other) {
+            let atLeastOneLess = false;
+            const allNodes = new Set([...Object.keys(this.clock), ...Object.keys(other)]);
+            
+            for (const node of allNodes) {
+                const thisVal = this.clock[node] || 0;
+                const otherVal = other[node] || 0;
+                if (thisVal > otherVal) return false;
+                if (thisVal < otherVal) atLeastOneLess = true;
+            }
+            return atLeastOneLess;
+        }
+    }
+
+    class LamportClock {
+        constructor() {
+            this.time = 0;
+        }
+        increment() {
+            return ++this.time;
+        }
+        update(receivedTime) {
+            this.time = Math.max(this.time, receivedTime) + 1;
+            return this.time;
+        }
+        getTime() {
+            return this.time;
+        }
+    }
+
+    class CausalEvent {
+        constructor(nodeId, type, data, vectorClock, lamportTime, causedBy) {
+            causedBy = causedBy || [];
+            this.id = 'evt_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+            this.nodeId = nodeId;
+            this.type = type;
+            this.data = data;
+            this.vectorClock = vectorClock;
+            this.lamportTime = lamportTime;
+            this.causedBy = causedBy;
+            this.timestamp = Date.now();
+            this.hash = null;
+        }
+
+        async computeHash() {
+            const data = JSON.stringify({
+                id: this.id,
+                nodeId: this.nodeId,
+                type: this.type,
+                data: this.data,
+                vectorClock: this.vectorClock,
+                lamportTime: this.lamportTime,
+                causedBy: this.causedBy,
+                timestamp: this.timestamp
+            });
+            const encoder = new TextEncoder();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            this.hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return this.hash;
+        }
+    }
+
+    class LedgerBlock {
+        constructor(index, events, previousHash, timestamp) {
+            this.index = index;
+            this.events = events;
+            this.previousHash = previousHash;
+            this.timestamp = timestamp || Date.now();
+            this.nonce = 0;
+            this.hash = null;
+        }
+
+        async computeHash() {
+            const data = JSON.stringify({
+                index: this.index,
+                events: this.events.map(e => e.hash),
+                previousHash: this.previousHash,
+                timestamp: this.timestamp,
+                nonce: this.nonce
+            });
+            const encoder = new TextEncoder();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            this.hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return this.hash;
+        }
+
+        async mine(difficulty) {
+            difficulty = difficulty || 2;
+            const prefix = '0'.repeat(difficulty);
+            while (true) {
+                await this.computeHash();
+                if (this.hash.startsWith(prefix)) break;
+                this.nonce++;
+                if (this.nonce % 1000 === 0) await new Promise(r => setTimeout(r, 0));
+            }
+            return this.hash;
+        }
+    }
+
+    const Fabric = {
+        nodeId: 'node_' + Math.random().toString(36).substr(2, 8),
+        vectorClock: null,
+        lamportClock: new LamportClock(),
+        events: [],
+        ledger: [],
+        nodes: new Map(),
+        peers: new Map(),
+        peer: null,
+        pendingEvents: [],
+        graphData: { nodes: [], links: [] },
+        computeTasks: new Map(),
+        
+        init: function() {
+            this.vectorClock = new VectorClock(this.nodeId);
+            this.nodes.set(this.nodeId, {
+                id: this.nodeId,
+                vectorClock: this.vectorClock.copy(),
+                lamportTime: 0,
+                status: 'active',
+                isSelf: true
+            });
+            
+            this.initP2P();
+            this.checkOllama();
+            this.createGenesisBlock();
+            this.updateUI();
+            this.initGraph();
+            
+            log('info', 'Fabric initialized with node ID: ' + this.nodeId);
+            document.getElementById('myNodeId').textContent = this.nodeId;
+        },
+
+        createGenesisBlock: async function() {
+            const genesisEvent = new CausalEvent(
+                this.nodeId,
+                'GENESIS',
+                { message: 'Causal Fabric Genesis' },
+                this.vectorClock.increment(),
+                this.lamportClock.increment()
+            );
+            await genesisEvent.computeHash();
+            this.events.push(genesisEvent);
+            
+            const genesisBlock = new LedgerBlock(0, [genesisEvent], '0');
+            await genesisBlock.mine(2);
+            this.ledger.push(genesisBlock);
+            
+            this.addToGraph(genesisEvent);
+            this.updateUI();
+            log('success', 'Genesis block created');
+        },
+
+        initP2P: function() {
+            try {
+                this.peer = new Peer(this.nodeId, { debug: 0 });
+                const self = this;
+
+                this.peer.on('open', function(id) {
+                    log('success', 'P2P connected with ID: ' + id);
+                    document.getElementById('p2pStatus').classList.add('active');
+                });
+
+                this.peer.on('connection', function(conn) {
+                    self.handleConnection(conn);
+                });
+
+                this.peer.on('error', function(err) {
+                    log('warning', 'P2P error: ' + err.type);
+                    document.getElementById('p2pStatus').classList.add('warning');
+                });
+            } catch (e) {
+                log('error', 'P2P initialization failed');
+                document.getElementById('p2pStatus').classList.add('error');
+            }
+        },
+
+        handleConnection: function(conn) {
+            const self = this;
+            conn.on('open', function() {
+                self.peers.set(conn.peer, conn);
+                log('info', 'Peer connected: ' + conn.peer);
+                
+                conn.send({
+                    type: 'SYNC_REQUEST',
+                    nodeId: self.nodeId,
+                    vectorClock: self.vectorClock.copy(),
+                    lamportTime: self.lamportClock.getTime(),
+                    events: self.events.slice(-50)
+                });
+            });
+
+            conn.on('data', function(data) {
+                self.handleMessage(conn.peer, data);
+            });
+
+            conn.on('close', function() {
+                self.peers.delete(conn.peer);
+                self.nodes.delete(conn.peer);
+                log('warning', 'Peer disconnected: ' + conn.peer);
+                self.updateUI();
+            });
+        },
+
+        handleMessage: function(fromPeer, message) {
+            switch (message.type) {
+                case 'SYNC_REQUEST':
+                    this.handleSyncRequest(fromPeer, message);
+                    break;
+                case 'SYNC_RESPONSE':
+                    this.handleSyncResponse(fromPeer, message);
+                    break;
+                case 'EVENT':
+                    this.handleRemoteEvent(fromPeer, message);
+                    break;
+                case 'COMPUTE_TASK':
+                    this.handleComputeTask(fromPeer, message);
+                    break;
+                case 'COMPUTE_RESULT':
+                    this.handleComputeResult(fromPeer, message);
+                    break;
+            }
+        },
+
+        handleSyncRequest: function(fromPeer, message) {
+            this.nodes.set(fromPeer, {
+                id: fromPeer,
+                vectorClock: message.vectorClock,
+                lamportTime: message.lamportTime,
+                status: 'active'
+            });
+
+            this.vectorClock.merge(message.vectorClock);
+            this.lamportClock.update(message.lamportTime);
+
+            const conn = this.peers.get(fromPeer);
+            if (conn) {
+                conn.send({
+                    type: 'SYNC_RESPONSE',
+                    nodeId: this.nodeId,
+                    vectorClock: this.vectorClock.copy(),
+                    lamportTime: this.lamportClock.getTime(),
+                    events: this.events,
+                    ledger: this.ledger
+                });
+            }
+
+            for (let i = 0; i < message.events.length; i++) {
+                const event = message.events[i];
+                if (!this.events.find(e => e.id === event.id)) {
+                    this.events.push(event);
+                    this.addToGraph(event);
+                }
+            }
+            this.updateUI();
+        },
+
+        handleSyncResponse: function(fromPeer, message) {
+            this.nodes.set(fromPeer, {
+                id: fromPeer,
+                vectorClock: message.vectorClock,
+                lamportTime: message.lamportTime,
+                status: 'active'
+            });
+
+            this.vectorClock.merge(message.vectorClock);
+            this.lamportClock.update(message.lamportTime);
+
+            for (let i = 0; i < message.events.length; i++) {
+                const event = message.events[i];
+                if (!this.events.find(e => e.id === event.id)) {
+                    this.events.push(event);
+                    this.addToGraph(event);
+                }
+            }
+            this.updateUI();
+        },
+
+        handleRemoteEvent: function(fromPeer, message) {
+            const event = message.event;
+            
+            if (this.events.find(e => e.id === event.id)) return;
+
+            this.vectorClock.merge(event.vectorClock);
+            this.lamportClock.update(event.lamportTime);
+
+            this.events.push(event);
+            this.addToGraph(event);
+
+            this.nodes.set(fromPeer, {
+                id: fromPeer,
+                vectorClock: event.vectorClock,
+                lamportTime: event.lamportTime,
+                status: 'active'
+            });
+
+            this.updateUI();
+            log('info', 'Received event from ' + fromPeer + ': ' + event.type);
+        },
+
+        createEvent: async function(type, data, causedBy) {
+            causedBy = causedBy || [];
+            const vc = this.vectorClock.increment();
+            const lt = this.lamportClock.increment();
+
+            const event = new CausalEvent(this.nodeId, type, data, vc, lt, causedBy);
+            await event.computeHash();
+
+            this.events.push(event);
+            this.addToGraph(event);
+            this.broadcastEvent(event);
+
+            if (this.pendingEvents.length >= 5) {
+                await this.createBlock();
+            } else {
+                this.pendingEvents.push(event);
+            }
+
+            this.updateUI();
+            return event;
+        },
+
+        broadcastEvent: function(event) {
+            this.peers.forEach(function(conn) {
+                conn.send({
+                    type: 'EVENT',
+                    event: event
+                });
+            });
+        },
+
+        createBlock: async function() {
+            if (this.pendingEvents.length === 0) return;
+
+            const previousBlock = this.ledger[this.ledger.length - 1];
+            const block = new LedgerBlock(
+                previousBlock.index + 1,
+                this.pendingEvents.slice(),
+                previousBlock.hash
+            );
+
+            await block.mine(2);
+            this.ledger.push(block);
+            this.pendingEvents = [];
+
+            log('success', 'Block ' + block.index + ' mined: ' + block.hash.slice(0, 16) + '...');
+            this.updateUI();
+        },
+
+        checkOllama: async function() {
+            try {
+                const response = await fetch(OLLAMA_URL + '/api/tags');
+                if (response.ok) {
+                    const data = await response.json();
+                    const hasLlama3 = data.models && data.models.some(m => m.name.includes('llama3'));
+                    document.getElementById('ollamaStatus').classList.add(hasLlama3 ? 'active' : 'warning');
+                    log(hasLlama3 ? 'success' : 'warning', 'Ollama connected. Llama3 ' + (hasLlama3 ? 'available' : 'not found'));
+                    return hasLlama3;
+                }
+            } catch (e) {
+                document.getElementById('ollamaStatus').classList.add('error');
+                log('error', 'Ollama not reachable at localhost:11434');
+            }
+            return false;
+        },
+
+        queryOllama: async function(prompt, context) {
+            context = context || '';
+            const systemPrompt = 'You are the AI intelligence core of a Globally Coordinated Causal Fabric system. ' +
+                'You understand distributed systems, vector clocks, Lamport timestamps, causality, consensus algorithms, and distributed ledgers. ' +
+                'Current fabric state: ' + this.events.length + ' events, ' + this.ledger.length + ' blocks, ' + this.nodes.size + ' nodes. ' + context;
+
+            try {
+                const response = await fetch(OLLAMA_URL + '/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: OLLAMA_MODEL,
+                        prompt: prompt,
+                        system: systemPrompt,
+                        stream: false
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.response;
+                }
+                throw new Error('Ollama request failed');
+            } catch (e) {
+                log('error', 'Ollama error: ' + e.message);
+                return 'Error connecting to Ollama. Ensure it is running at ' + OLLAMA_URL + ' with llama3 model.';
+            }
+        },
+
+        handleComputeTask: function(fromPeer, message) {
+            const task = message.task;
+            log('info', 'Received compute task from ' + fromPeer + ': ' + task.type);
+            
+            const self = this;
+            this.executeLocalCompute(task).then(function(result) {
+                const conn = self.peers.get(fromPeer);
+                if (conn) {
+                    conn.send({
+                        type: 'COMPUTE_RESULT',
+                        taskId: task.id,
+                        result: result,
+                        nodeId: self.nodeId
+                    });
+                }
+            });
+        },
+
+        handleComputeResult: function(fromPeer, message) {
+            const task = this.computeTasks.get(message.taskId);
+            if (task) {
+                task.results.push({
+                    nodeId: message.nodeId,
+                    result: message.result
+                });
+                
+                if (task.results.length >= task.expectedResponses) {
+                    this.finalizeComputeTask(task);
+                }
+                this.updateUI();
+            }
+        },
+
+        executeLocalCompute: async function(task) {
+            switch (task.type) {
+                case 'ai-inference':
+                    return await this.queryOllama(task.data.prompt || JSON.stringify(task.data));
+                case 'hash-compute':
+                    const encoder = new TextEncoder();
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(JSON.stringify(task.data)));
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                case 'data-process':
+                    return { processed: true, data: task.data, nodeId: this.nodeId };
+                case 'consensus':
+                    return { vote: true, nodeId: this.nodeId, timestamp: Date.now() };
+                default:
+                    return { error: 'Unknown task type' };
+            }
+        },
+
+        submitDistributedTask: async function(type, data) {
+            const taskId = 'task_' + Math.random().toString(36).substr(2, 9);
+            const task = {
+                id: taskId,
+                type: type,
+                data: data,
+                submittedBy: this.nodeId,
+                timestamp: Date.now(),
+                results: [],
+                expectedResponses: this.peers.size + 1,
+                status: 'running'
+            };
+
+            this.computeTasks.set(taskId, task);
+
+            const localResult = await this.executeLocalCompute(task);
+            task.results.push({ nodeId: this.nodeId, result: localResult });
+
+            this.peers.forEach(function(conn) {
+                conn.send({
+                    type: 'COMPUTE_TASK',
+                    task: task
+                });
+            });
+
+            await this.createEvent('COMPUTE', { taskId: taskId, type: type, data: data });
+            this.updateUI();
+            return task;
+        },
+
+        finalizeComputeTask: function(task) {
+            task.status = 'completed';
+            this.createEvent('COMPUTE_COMPLETE', {
+                taskId: task.id,
+                resultCount: task.results.length
+            });
+            log('success', 'Task ' + task.id + ' completed with ' + task.results.length + ' results');
+        },
+
+        addToGraph: function(event) {
+            const node = {
+                id: event.id,
+                type: event.type,
+                nodeId: event.nodeId,
+                lamportTime: event.lamportTime,
+                timestamp: event.timestamp
+            };
+            
+            this.graphData.nodes.push(node);
+
+            for (let i = 0; i < event.causedBy.length; i++) {
+                this.graphData.links.push({
+                    source: event.causedBy[i],
+                    target: event.id,
+                    type: 'causal'
+                });
+            }
+
+            for (let i = 0; i < this.events.length; i++) {
+                const existingEvent = this.events[i];
+                if (existingEvent.id === event.id) continue;
+                
+                const existingVC = new VectorClock(existingEvent.nodeId);
+                existingVC.clock = existingEvent.vectorClock;
+
+                if (existingVC.happensBefore(event.vectorClock) && 
+                    event.causedBy.indexOf(existingEvent.id) === -1 &&
+                    event.lamportTime - existingEvent.lamportTime <= 3) {
+                    this.graphData.links.push({
+                        source: existingEvent.id,
+                        target: event.id,
+                        type: 'temporal'
+                    });
+                }
+            }
+
+            this.updateGraph();
+        },
+
+        updateUI: function() {
+            document.getElementById('myVectorClock').textContent = JSON.stringify(this.vectorClock.copy());
+            document.getElementById('myLamportTime').textContent = this.lamportClock.getTime();
+            document.getElementById('totalEvents').textContent = this.events.length;
+            document.getElementById('ledgerBlocks').textContent = this.ledger.length;
+            document.getElementById('nodeCount').textContent = this.nodes.size + ' nodes';
+            document.getElementById('eventCount').textContent = this.events.length + ' events';
+
+            let maxDepth = 0;
+            for (let i = 0; i < this.events.length; i++) {
+                let depth = 0;
+                let current = this.events[i];
+                while (current.causedBy.length > 0) {
+                    depth++;
+                    const cause = this.events.find(e => e.id === current.causedBy[0]);
+                    if (!cause) break;
+                    current = cause;
+                }
+                maxDepth = Math.max(maxDepth, depth);
+            }
+            document.getElementById('causalDepth').textContent = maxDepth;
+
+            const nodeList = document.getElementById('nodeList');
+            nodeList.innerHTML = '';
+            const self = this;
+            this.nodes.forEach(function(node, id) {
+                const div = document.createElement('div');
+                div.className = 'node-card' + (node.isSelf ? ' self' : '');
+                div.innerHTML = '<div class="node-id">' + id + (node.isSelf ? ' (self)' : '') + '</div>' +
+                    '<div class="node-clock">Lamport: ' + (node.lamportTime || 0) + '</div>' +
+                    '<div class="vector-clock-display">' + JSON.stringify(node.vectorClock || {}) + '</div>';
+                nodeList.appendChild(div);
+            });
+
+            const ledgerEntries = document.getElementById('ledgerEntries');
+            ledgerEntries.innerHTML = '';
+            this.ledger.slice(-10).reverse().forEach(function(block) {
+                const div = document.createElement('div');
+                div.className = 'ledger-entry';
+                div.innerHTML = '<strong>Block ' + block.index + '</strong>' +
+                    '<div class="hash">' + block.hash + '</div>' +
+                    '<div class="timestamp">' + new Date(block.timestamp).toLocaleTimeString() + ' - ' + block.events.length + ' events</div>';
+                ledgerEntries.appendChild(div);
+            });
+
+            this.updateTimeline();
+
+            const computeTasksEl = document.getElementById('computeTasks');
+            computeTasksEl.innerHTML = '';
+            this.computeTasks.forEach(function(task) {
+                const progress = (task.results.length / task.expectedResponses) * 100;
+                const div = document.createElement('div');
+                div.className = 'compute-task';
+                div.innerHTML = '<strong>' + task.type + '</strong>' +
+                    '<div style="font-size:0.7rem;color:var(--text-secondary);">' + task.status + ' - ' + task.results.length + '/' + task.expectedResponses + ' responses</div>' +
+                    '<div class="progress"><div class="progress-bar" style="width:' + progress + '%"></div></div>';
+                computeTasksEl.appendChild(div);
+            });
+        },
+
+        updateTimeline: function() {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+
+            const sortedEvents = this.events.slice().sort((a, b) => a.lamportTime - b.lamportTime);
+
+            sortedEvents.slice(-20).forEach(function(event, idx) {
+                const div = document.createElement('div');
+                div.className = 'timeline-event';
+                div.innerHTML = '<div class="timeline-dot ' + (idx < sortedEvents.length - 1 ? 'causal' : '') + '"></div>' +
+                    '<div class="timeline-time">L:' + event.lamportTime + '</div>' +
+                    '<div class="timeline-label" title="' + event.type + '">' + event.type + '</div>';
+                div.onclick = function() { highlightEvent(event.id); };
+                container.appendChild(div);
+            });
+        },
+
+        initGraph: function() {
+            const container = document.getElementById('graph-container');
+            const width = container.clientWidth || 600;
+            const height = container.clientHeight || 400;
+
+            const svg = d3.select('#graph-container')
+                .append('svg')
+                .attr('width', '100%')
+                .attr('height', '100%')
+                .attr('viewBox', '0 0 ' + width + ' ' + height);
+
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-0 -5 10 10')
+                .attr('refX', 20)
+                .attr('refY', 0)
+                .attr('orient', 'auto')
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .append('path')
+                .attr('d', 'M 0,-5 L 10,0 L 0,5')
+                .attr('fill', '#00f5ff');
+
+            this.graphSvg = svg;
+            this.graphWidth = width;
+            this.graphHeight = height;
+
+            this.simulation = d3.forceSimulation()
+                .force('link', d3.forceLink().id(d => d.id).distance(80))
+                .force('charge', d3.forceManyBody().strength(-200))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(30));
+
+            this.linkGroup = svg.append('g').attr('class', 'links');
+            this.nodeGroup = svg.append('g').attr('class', 'nodes');
+            this.labelGroup = svg.append('g').attr('class', 'labels');
+        },
+
+        updateGraph: function() {
+            if (!this.graphSvg) return;
+
+            const self = this;
+
+            const links = this.linkGroup.selectAll('line')
+                .data(this.graphData.links, d => (d.source.id || d.source) + '-' + (d.target.id || d.target));
+
+            links.enter()
+                .append('line')
+                .attr('class', 'link')
+                .attr('stroke', d => d.type === 'causal' ? '#00f5ff' : '#ff00ff')
+                .attr('stroke-width', d => d.type === 'causal' ? 2 : 1)
+                .attr('stroke-dasharray', d => d.type === 'temporal' ? '4,4' : 'none')
+                .attr('marker-end', 'url(#arrowhead)');
+
+            links.exit().remove();
+
+            const nodes = this.nodeGroup.selectAll('circle')
+                .data(this.graphData.nodes, d => d.id);
+
+            nodes.enter()
+                .append('circle')
+                .attr('class', 'node-circle')
+                .attr('r', 12)
+                .attr('fill', d => self.getNodeColor(d.type))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .call(d3.drag()
+                    .on('start', function(event, d) {
+                        if (!event.active) self.simulation.alphaTarget(0.3).restart();
+                        d.fx = d.x;
+                        d.fy = d.y;
+                    })
+                    .on('drag', function(event, d) {
+                        d.fx = event.x;
+                        d.fy = event.y;
+                    })
+                    .on('end', function(event, d) {
+                        if (!event.active) self.simulation.alphaTarget(0);
+                        d.fx = null;
+                        d.fy = null;
+                    }))
+                .on('click', function(event, d) { highlightEvent(d.id); });
+
+            nodes.exit().remove();
+
+            const labels = this.labelGroup.selectAll('text')
+                .data(this.graphData.nodes, d => d.id);
+
+            labels.enter()
+                .append('text')
+                .attr('font-size', '8px')
+                .attr('fill', '#888')
+                .attr('text-anchor', 'middle')
+                .attr('dy', 25)
+                .text(d => d.type.slice(0, 8));
+
+            labels.exit().remove();
+
+            this.simulation.nodes(this.graphData.nodes);
+            this.simulation.force('link').links(this.graphData.links);
+            this.simulation.alpha(0.3).restart();
+
+            this.simulation.on('tick', function() {
+                self.linkGroup.selectAll('line')
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                self.nodeGroup.selectAll('circle')
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+
+                self.labelGroup.selectAll('text')
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            });
+        },
+
+        getNodeColor: function(type) {
+            const colors = {
+                'GENESIS': '#ffd700',
+                'AI_QUERY': '#00f5ff',
+                'AI_RESPONSE': '#00ff88',
+                'COMPUTE': '#ff00ff',
+                'COMPUTE_COMPLETE': '#ff8800',
+                'USER_ACTION': '#00f5ff',
+                'SYNC': '#888888'
+            };
+            return colors[type] || '#ffffff';
+        }
+    };
+
+    function log(level, message) {
+        const console = document.getElementById('consoleOutput');
+        const line = document.createElement('div');
+        line.className = 'console-line ' + level;
+        line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + message;
+        console.appendChild(line);
+        console.scrollTop = console.scrollHeight;
+    }
+
+    function createNode() {
+        const newNodeId = 'node_' + Math.random().toString(36).substr(2, 8);
+        Fabric.nodes.set(newNodeId, {
+            id: newNodeId,
+            vectorClock: {},
+            lamportTime: 0,
+            status: 'simulated'
+        });
+        Fabric.createEvent('NODE_JOIN', { nodeId: newNodeId });
+        log('success', 'Created simulated node: ' + newNodeId);
+    }
+
+    function broadcastState() {
+        Fabric.peers.forEach(function(conn) {
+            conn.send({
+                type: 'SYNC_REQUEST',
+                nodeId: Fabric.nodeId,
+                vectorClock: Fabric.vectorClock.copy(),
+                lamportTime: Fabric.lamportClock.getTime(),
+                events: Fabric.events.slice(-50)
+            });
+        });
+        log('info', 'Broadcasting state to all peers');
+    }
+
+    async function sendToAI() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        if (!message) return;
+
+        const chatMessages = document.getElementById('chatMessages');
+
+        const userDiv = document.createElement('div');
+        userDiv.className = 'chat-message user';
+        userDiv.textContent = message;
+        chatMessages.appendChild(userDiv);
+
+        input.value = '';
+        input.disabled = true;
+
+        const queryEvent = await Fabric.createEvent('AI_QUERY', { prompt: message });
+
+        const thinkingDiv = document.createElement('div');
+        thinkingDiv.className = 'chat-message ai';
+        thinkingDiv.textContent = 'Thinking...';
+        thinkingDiv.id = 'thinking';
+        chatMessages.appendChild(thinkingDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        const context = 'Recent events: ' + Fabric.events.slice(-5).map(e => e.type).join(', ');
+        const response = await Fabric.queryOllama(message, context);
+
+        await Fabric.createEvent('AI_RESPONSE', { 
+            prompt: message, 
+            response: response.slice(0, 500) 
+        }, [queryEvent.id]);
+
+        document.getElementById('thinking').remove();
+
+        const aiDiv = document.createElement('div');
+        aiDiv.className = 'chat-message ai';
+        aiDiv.textContent = response;
+        chatMessages.appendChild(aiDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        input.disabled = false;
+        input.focus();
+    }
+
+    function submitComputeTask() {
+        document.getElementById('computeModal').classList.add('active');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    async function executeComputeTask() {
+        const type = document.getElementById('taskType').value;
+        let data;
+        
+        try {
+            data = JSON.parse(document.getElementById('taskData').value || '{}');
+        } catch (e) {
+            data = { input: document.getElementById('taskData').value };
+        }
+
+        closeModal('computeModal');
+        const task = await Fabric.submitDistributedTask(type, data);
+        log('info', 'Submitted distributed task: ' + task.id);
+    }
+
+    function highlightEvent(eventId) {
+        const event = Fabric.events.find(e => e.id === eventId);
+        if (!event) return;
+
+        d3.selectAll('.node-circle')
+            .attr('stroke-width', d => d.id === eventId ? 4 : 2)
+            .attr('stroke', d => d.id === eventId ? '#ffd700' : '#fff');
+
+        log('info', 'Event: ' + event.type + ' | Node: ' + event.nodeId + ' | Lamport: ' + event.lamportTime);
+    }
+
+    function resetGraph() {
+        Fabric.graphData = { nodes: [], links: [] };
+        Fabric.events = [];
+        Fabric.ledger = [];
+        Fabric.pendingEvents = [];
+        Fabric.createGenesisBlock();
+    }
+
+    function exportGraph() {
+        const data = {
+            events: Fabric.events,
+            ledger: Fabric.ledger,
+            nodes: Array.from(Fabric.nodes.entries()),
+            exportedAt: new Date().toISOString()
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'causal-fabric-export-' + Date.now() + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        log('success', 'Exported fabric state to JSON');
+    }
+
+    window.addEventListener('load', function() {
+        Fabric.init();
+
+        window.addEventListener('resize', function() {
+            const container = document.getElementById('graph-container');
+            if (container && Fabric.graphSvg) {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                Fabric.graphSvg.attr('viewBox', '0 0 ' + width + ' ' + height);
+                Fabric.simulation.force('center', d3.forceCenter(width / 2, height / 2));
+                Fabric.simulation.alpha(0.3).restart();
+            }
+        });
+
+        setTimeout(async function() {
+            await Fabric.createEvent('SYSTEM_INIT', { version: '1.0.0' });
+        }, 1000);
+
+        setTimeout(async function() {
+            await Fabric.createEvent('USER_ACTION', { action: 'fabric_ready' });
+        }, 2000);
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'e') {
+            e.preventDefault();
+            exportGraph();
+        }
+        if (e.ctrlKey && e.key === 'n') {
+            e.preventDefault();
+            createNode();
+        }
+    });
+    </script>
+</body>
+</html>
