@@ -780,7 +780,7 @@
 
     <script>
     const OLLAMA_URL = 'http://localhost:11434';
-    const OLLAMA_MODEL = 'llama3';
+    const OLLAMA_MODEL = 'llama3.2';
 
     class VectorClock {
         constructor(nodeId) {
@@ -1162,7 +1162,7 @@
                 const response = await fetch(OLLAMA_URL + '/api/tags');
                 if (response.ok) {
                     const data = await response.json();
-                    const hasLlama3 = data.models && data.models.some(m => m.name.includes('llama3'));
+                    const hasLlama3 = data.models && data.models.some(m => m.name.includes('llama3.2'));
                     document.getElementById('ollamaStatus').classList.add(hasLlama3 ? 'active' : 'warning');
                     log(hasLlama3 ? 'success' : 'warning', 'Ollama connected. Llama3 ' + (hasLlama3 ? 'available' : 'not found'));
                     return hasLlama3;
@@ -1199,7 +1199,7 @@
                 throw new Error('Ollama request failed');
             } catch (e) {
                 log('error', 'Ollama error: ' + e.message);
-                return 'Error connecting to Ollama. Ensure it is running at ' + OLLAMA_URL + ' with llama3 model.';
+                return 'Error connecting to Ollama. Ensure it is running at ' + OLLAMA_URL + ' with llama3.2 model.';
             }
         },
 
